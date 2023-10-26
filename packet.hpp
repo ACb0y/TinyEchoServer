@@ -1,5 +1,8 @@
 #pragma once
 
+#include <stdlib.h>
+#include <strings.h>
+
 namespace TinyEcho {
 // 二进制包封装
 class Packet {

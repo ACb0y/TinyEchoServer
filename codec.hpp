@@ -1,11 +1,7 @@
 #pragma once
 
 #include <arpa/inet.h>
-#include <string.h>
-#include <strings.h>
-#include <unistd.h>
 
-#include <list>
 #include <string>
 
 #include "packet.hpp"
