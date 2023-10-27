@@ -4,15 +4,15 @@ TARGET = UnitTest
 
 #======================= 自定义设置部分 开始 ====================#
 # c编译选项
-CFLAGS = -g -Wall -Werror -pipe -m64
+CFLAGS = -g -Wall -Werror -Wno-error=deprecated-declarations -pipe -m64
 # c++编译选项
-CXXFLAGS = -g -Wall -Werror -pipe -m64 -std=c++11
+CXXFLAGS = -g -Wall -Werror -Wno-error=deprecated-declarations -pipe -m64 -std=c++11
 # 连接选项
 LDFLAGS =
 # 头文件目录
 INCFLAGS = -I../
 # 源文件目录
-SRCDIRS = .
+SRCDIRS = . ../
 # 单独的源文件
 ALONE_SOURCES =
 #======================= 自定义设置部分 结束 =====================#
