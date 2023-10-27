@@ -7,6 +7,7 @@
 #include "packet.hpp"
 
 namespace TinyEcho {
+#define TINY_ECHO_HEAD_LEN 4
 enum DecodeStatus {
   HEAD = 1,  // 解析协议头（协议体长度）
   BODY = 2,  // 解析协议体
@@ -15,18 +16,20 @@ enum DecodeStatus {
 
 class Codec {
  public:
+  Codec() { pkt_.Alloc(TINY_ECHO_HEAD_LEN); }
   ~Codec() {
     if (msg_) delete msg_;
   }
   uint8_t *Data() { return pkt_.Data4Write(); }
   size_t Len() { return pkt_.CanWriteLen(); }
   void EnCode(const std::string &msg, Packet &pkt) {
-    constexpr size_t kHeadLen = 4;
-    pkt.Alloc(msg.length() + kHeadLen);
+    pkt.Alloc(msg.length() + TINY_ECHO_HEAD_LEN);
     *(uint32_t *)pkt.Data() = htonl(msg.length());  // 协议体长度转换成网络字节序
-    memmove(pkt.Data() + kHeadLen, msg.data(), msg.length());
+    memmove(pkt.Data() + TINY_ECHO_HEAD_LEN, msg.data(), msg.length());
+    pkt.UpdateUseLen(TINY_ECHO_HEAD_LEN + msg.length());
   }
   void DeCode(size_t len) {
+    pkt_.UpdateUseLen(len);
     uint8_t *data = (uint8_t *)pkt_.Data4Parse();
     uint32_t need_parse_len = pkt_.NeedParseLen();  // 还有多少字节需要解析
     while (need_parse_len > 0) {  // 只要还有未解析的网络字节流，就持续解析
@@ -51,16 +54,16 @@ class Codec {
 
  private:
   bool decodeHead(uint8_t **data, uint32_t &need_parse_len, bool &decode_break) {
-    constexpr size_t kHeadLen = 4;
-    if (need_parse_len < kHeadLen) {
+    if (need_parse_len < TINY_ECHO_HEAD_LEN) {
       decode_break = true;
       return true;
     }
     body_len_ = ntohl(*(uint32_t *)(*data));
-    need_parse_len -= kHeadLen;
-    (*data) += kHeadLen;
+    need_parse_len -= TINY_ECHO_HEAD_LEN;
+    (*data) += TINY_ECHO_HEAD_LEN;
     decode_status_ = BODY;
-    pkt_.UpdateParseLen(kHeadLen);
+    pkt_.UpdateParseLen(TINY_ECHO_HEAD_LEN);
+    pkt_.ReAlloc(TINY_ECHO_HEAD_LEN + body_len_);
     return true;
   }
   bool decodeBody(uint8_t **data, uint32_t &need_parse_len, bool &decode_break) {
@@ -69,7 +72,7 @@ class Codec {
       return true;
     }
     if (msg_ == nullptr) {
-      msg_ = new string((const char *)*data, body_len_);
+      msg_ = new std::string((const char *)*data, body_len_);
     }
     need_parse_len -= body_len_;
     (*data) += body_len_;
