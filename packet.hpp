@@ -3,6 +3,8 @@
 #include <stdlib.h>
 #include <strings.h>
 
+#include <cstdint>
+
 namespace TinyEcho {
 // 二进制包封装
 class Packet {

@@ -1,9 +1,5 @@
 #pragma once
 
-#ifdef __APPLE__
-#define _XOPEN_SOURCE
-#endif
-
 #include <stdlib.h>
 #include <string.h>
 #include <ucontext.h>
