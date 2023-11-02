@@ -1,8 +1,11 @@
 #pragma once
 
+#include <sys/epoll.h>
+#include <unistd.h>
+
 #include "conn.hpp"
 
-inline void AddReadEvent(Conn *conn, bool is_et = false, bool is_one_shot = false) {
+inline void AddReadEvent(TinyEcho::Conn *conn, bool is_et = false, bool is_one_shot = false) {
   epoll_event event;
   event.data.ptr = (void *)conn;
   event.events = EPOLLIN;
@@ -18,14 +21,14 @@ inline void AddReadEvent(int epoll_fd, int fd, void *user_data) {
   assert(epoll_ctl(epoll_fd, EPOLL_CTL_ADD, fd, &event) != -1);
 }
 
-inline void ReStartReadEvent(Conn *conn) {
+inline void ReStartReadEvent(TinyEcho::Conn *conn) {
   epoll_event event;
   event.data.ptr = (void *)conn;
   event.events = EPOLLIN | EPOLLONESHOT;
   assert(epoll_ctl(conn->EpollFd(), EPOLL_CTL_MOD, conn->Fd(), &event) != -1);
 }
 
-inline void ModToWriteEvent(Conn *conn, bool is_et = false) {
+inline void ModToWriteEvent(TinyEcho::Conn *conn, bool is_et = false) {
   epoll_event event;
   event.data.ptr = (void *)conn;
   event.events = EPOLLOUT;
@@ -40,7 +43,7 @@ inline void ModToWriteEvent(int epoll_fd, int fd, void *user_data) {
   assert(epoll_ctl(epoll_fd, EPOLL_CTL_MOD, fd, &event) != -1);
 }
 
-inline void ClearEvent(Conn *conn, bool is_close = true) {
+inline void ClearEvent(TinyEcho::Conn *conn, bool is_close = true) {
   assert(epoll_ctl(conn->EpollFd(), EPOLL_CTL_DEL, conn->Fd(), NULL) != -1);
   if (is_close) close(conn->Fd());  // close操作需要EPOLL_CTL_DEL之后调用，否则调用epoll_ctl()删除fd会失败
 }
