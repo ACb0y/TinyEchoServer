@@ -2,8 +2,6 @@
 
 #include "conn.hpp"
 
-namespace TinyEcho {
-
 inline void AddReadEvent(Conn *conn, bool is_et = false, bool is_one_shot = false) {
   epoll_event event;
   event.data.ptr = (void *)conn;
@@ -51,4 +49,3 @@ inline void ClearEvent(int epoll_fd, int fd) {
   assert(epoll_ctl(epoll_fd, EPOLL_CTL_DEL, fd, NULL) != -1);
   close(fd);  // close操作需要EPOLL_CTL_DEL之后调用，否则调用epoll_ctl()删除fd会失败
 }
-}  // namespace TinyEcho
