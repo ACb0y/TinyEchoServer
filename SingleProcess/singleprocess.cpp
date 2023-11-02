@@ -6,10 +6,11 @@
 #include "../cmdline.h"
 #include "../common.hpp"
 
+using namespace std;
 using namespace TinyEcho;
 
 void handlerClient(int client_fd) {
-  std::string msg;
+  string msg;
   if (not RecvMsg(client_fd, msg)) {
     return;
   }
@@ -27,7 +28,7 @@ void usage() {
 }
 
 int main(int argc, char* argv[]) {
-  std::string ip;
+  string ip;
   int64_t port;
   CmdLine::StrOptRequired(&ip, "ip");
   CmdLine::Int64OptRequired(&port, "port");

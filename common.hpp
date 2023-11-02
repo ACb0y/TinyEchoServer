@@ -17,7 +17,7 @@ bool SendMsg(int fd, const std::string message) {
   Packet pkt;
   Codec codec;
   codec.EnCode(message, pkt);
-  ssize_t sendLen = 0;
+  size_t sendLen = 0;
   while (sendLen != pkt.UseLen()) {
     ssize_t ret = write(fd, pkt.Data() + sendLen, pkt.UseLen() - sendLen);
     if (ret < 0) {
@@ -60,11 +60,11 @@ void SetTimeOut(int fd, int64_t sec, int64_t usec) {
   assert(setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv)) != -1);
 }
 
-int CreateListenSocket(char *ip, int port, bool reuse_port) {
+int CreateListenSocket(std::string ip, int port, bool reuse_port) {
   sockaddr_in addr;
   addr.sin_family = AF_INET;
   addr.sin_port = htons(port);
-  addr.sin_addr.s_addr = inet_addr(ip);
+  addr.sin_addr.s_addr = inet_addr(ip.c_str());
   int sock_fd = socket(AF_INET, SOCK_STREAM, 0);
   if (sock_fd < 0) {
     perror("socket failed");
