@@ -13,7 +13,7 @@ class ClientManager {
     clients_ = new EchoClient*[count];
     for (int i = 0; i < count; i++) {
       clients_[i] = newClient();
-      clients_[i]->Connecting(ip_, port_);
+      clients_[i]->Connect(ip_, port_);
     }
   }
   ~ClientManager() {
@@ -30,7 +30,7 @@ class ClientManager {
       }
       delete clients_[i];
       clients_[i] = newClient();
-      clients_[i]->Connecting(ip_, port_);
+      clients_[i]->Connect(ip_, port_);
     }
   }
 

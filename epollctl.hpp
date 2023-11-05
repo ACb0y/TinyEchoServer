@@ -21,6 +21,13 @@ inline void AddReadEvent(int epoll_fd, int fd, void *user_data) {
   assert(epoll_ctl(epoll_fd, EPOLL_CTL_ADD, fd, &event) != -1);
 }
 
+inline void AddWriteEvent(int epoll_fd, int fd, void *user_data) {
+  epoll_event event;
+  event.data.ptr = user_data;
+  event.events = EPOLLOUT;
+  assert(epoll_ctl(epoll_fd, EPOLL_CTL_ADD, fd, &event) != -1);
+}
+
 inline void ReStartReadEvent(TinyEcho::Conn *conn) {
   epoll_event event;
   event.data.ptr = (void *)conn;

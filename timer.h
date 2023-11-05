@@ -24,10 +24,10 @@ class Timer {
   uint64_t Register(TimerCallBack call_back, void* data, int64_t time_out_ms) {
     alloc_id_++;
     TimerData timer_data;
-    timerData.id_ = alloc_id_;
-    timerData.data_ = data;
-    timerData.abs_time_ms_ = GetCurrentTimeMs() + time_out_ms;
-    timerData.call_back_ = call_back;
+    timer_data.id_ = alloc_id_;
+    timer_data.data_ = data;
+    timer_data.abs_time_ms_ = GetCurrentTimeMs() + time_out_ms;
+    timer_data.call_back_ = call_back;
     timers_.push(timer_data);
     timer_ids_.insert(timer_data.id_);
     return alloc_id_;

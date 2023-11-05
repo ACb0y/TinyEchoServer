@@ -28,7 +28,9 @@ void finish(void *data) {
 
 void clientManagerCheck(void *data) {
   ClientManager *client_manager = (ClientManager *)data;
-  client_manager->CheckStatus();
+  int32_t create_client_cnt = 0;
+  client_manager->CheckStatus(create_client_cnt);
+  cout << "create client count = " << create_client_cnt << endl;
   // 重新注册定时器
   client_manager->GetTimer()->Register(clientManagerCheck, data, 1000);
 }
@@ -56,7 +58,7 @@ int main(int argc, char *argv[]) {
     return -1;
   }
   Timer timer;
-  ClientManager client_manager(ip, port, epoll_fd, &timer);
+  ClientManager client_manager(ip, port, epoll_fd, &timer, client_count, true);
   timer.Register(finish, nullptr, run_time * 1000);
   timer.Register(clientManagerCheck, &client_manager, 1000);
   while (true) {
@@ -78,12 +80,10 @@ int main(int argc, char *argv[]) {
       msec = 0;  // 下次大概率还有事件，故msec设置为0
     }
     for (int i = 0; i < num; i++) {
-      // TODO
-      //      EventData *data = (EventData *)events[i].data.ptr;
-      //      data->events_ = events[i].events;
-      //      mainEventHandler(data);
+      EchoClient *client = (EchoClient *)events[i].data.ptr;
+      client->Deal();
     }
-    if (oneTimer) timer.Run(timerData);  // 处理定时器
+    if (oneTimer) timer.Run(timer_data);  // 处理定时器
   }
   return 0;
 }
