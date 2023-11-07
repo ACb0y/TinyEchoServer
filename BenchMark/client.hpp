@@ -5,6 +5,7 @@
 
 #include <string>
 
+#include "../codec.hpp"
 #include "../epollctl.hpp"
 
 namespace BenchMark {
@@ -29,7 +30,7 @@ class EchoClient {
   }
   int Fd() { return fd_; }
   ClientStatus GetStatus() { return status_; }
-  void SetEchoMessage(const std::string& message) { message_ = message; }
+  void SetEchoMessage(const std::string& message) { codec_.EnCode(message, send_pkt_); }
   bool IsValid() {
     if (Failure == status_ || Finish == status_) {
       return false;
@@ -96,7 +97,7 @@ class EchoClient {
     } else if (RecvResponse == status_) {  // 状态转移分支 -> (RecvResponse, Success, Failure)
       result = recvResponse();
     } else if (Success == status_) {  // 状态转移分支 -> (SendRequest, Failure)
-      result = sendRequest();
+      result = dealSuccess();
     }
     if (not result) {
       status_ = Failure;
@@ -114,47 +115,40 @@ class EchoClient {
   }
   bool sendRequest() {
     last_send_req_time_us_ = GetCurrentTimeUs();
-
-    // TODO
+    ssize_t ret = write(fd_, send_pkt_.Data() + send_len_, send_pkt_.UseLen() - send_len_);
+    if (ret < 0) {
+      if (EINTR == errno || EAGAIN == errno || EWOULDBLOCK == errno) return true;
+      return false;
+    }
+    send_len_ += ret;
+    if (send_len_ == send_pkt_.UseLen()) {
+      status_ = RecvResponse;
+    }
     return true;
   }
   bool recvResponse() {
-    // TODO
+    last_recv_resp_time_us_ = GetCurrentTimeUs();
+    ssize_t ret = read(fd_, codec_.Data(), codec_.Len());
+    if (ret == 0) {  // 对端关闭连接
+      status_ = Finish;
+      return true;
+    }
+    if (ret < 0) {
+      if (EINTR == errno || EAGAIN == errno || EWOULDBLOCK == errno) return true;
+      return false;
+    }
+    codec_.DeCode(ret);
+    if (codec_.GetMessage() != nullptr) {
+      status_ = Success;
+    }
     return true;
   }
-  /*
-   *  bool Read() {
-    do {
-      ssize_t ret = read(fd_, codec_.Data(), codec_.Len());
-      if (ret == 0) {
-        perror("peer close connection");
-        return false;
-      }
-      if (ret < 0) {
-        if (EINTR == errno) continue;
-        if (EAGAIN == errno or EWOULDBLOCK == errno) return true;
-        perror("read failed");
-        return false;
-      }
-      codec_.DeCode((size_t)ret);
-    } while (is_multi_io_);
+  bool dealSuccess() {
+    finish_req_count_++;  // 统计请求成功数
+    status_ = SendRequest;
     return true;
   }
-  bool Write() {
-    do {
-      if (send_len_ == pkt_.UseLen()) return true;
-      ssize_t ret = write(fd_, pkt_.Data() + send_len_, pkt_.UseLen() - send_len_);
-      if (ret < 0) {
-        if (EINTR == errno) continue;
-        if (EAGAIN == errno && EWOULDBLOCK == errno) return true;
-        perror("write failed");
-        return false;
-      }
-      send_len_ += ret;
-    } while (is_multi_io_);
-    return true;
-  }
-   */
+
   int64_t GetCurrentTimeUs() {
     struct timeval current;
     gettimeofday(&current, NULL);
@@ -167,7 +161,9 @@ class EchoClient {
   int max_req_count_{0};  // 客户端最多执行多少次请求
   int finish_req_count_{0};  // 完成的请求数
   ClientStatus status_{Init};  // 客户端状态机
-  std::string message_;  // 要发送的消息
+  size_t send_len_{0};  // 完成发送的数据长度
+  TinyEcho::Packet send_pkt_;  // 发送的数据包
+  TinyEcho::Codec codec_;
   int64_t last_connect_time_us_{0};  // 最近一次connect时间，单元us
   int64_t last_send_req_time_us_{0};  // 最近一次发送请求时间，单元us
   int64_t last_recv_resp_time_us_{0};  // 最近一次接受应答时间，单位us
