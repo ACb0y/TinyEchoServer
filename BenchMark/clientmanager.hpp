@@ -8,11 +8,18 @@
 namespace BenchMark {
 class ClientManager {
  public:
-  ClientManager(const std::string& ip, int64_t port, int epoll_fd, Timer* timer, int count, bool is_rand_req_cnt)
-      : ip_(ip), port_(port), epoll_fd_(epoll_fd), timer_(timer), count_(count), is_rand_req_cnt_(is_rand_req_cnt) {
+  ClientManager(const std::string& ip, int64_t port, int epoll_fd, Timer* timer, int count, const std::string& message,
+                bool is_rand_req_count)
+      : ip_(ip),
+        port_(port),
+        epoll_fd_(epoll_fd),
+        timer_(timer),
+        count_(count),
+        is_rand_req_count_(is_rand_req_count),
+        message_(message) {
     clients_ = new EchoClient*[count];
     for (int i = 0; i < count; i++) {
-      clients_[i] = newClient();
+      clients_[i] = newClient(message);
       clients_[i]->Connect(ip_, port_);
     }
   }
@@ -23,23 +30,28 @@ class ClientManager {
     delete[] clients_;
   }
   Timer* GetTimer() { return timer_; }
-  void CheckStatus() {  // 检查客户端连接状态，并模拟了客户端的随机关闭和随机创建
+  void CheckStatus(int32_t& create_client_count) {  // 检查客户端连接状态，并模拟了客户端的随机关闭和随机创建
     for (int i = 0; i < count_; i++) {
       if (clients_[i]->IsValid()) {
         continue;
       }
       delete clients_[i];
-      clients_[i] = newClient();
+      create_client_count++;
+      clients_[i] = newClient(message_);
       clients_[i]->Connect(ip_, port_);
     }
   }
 
  private:
-  EchoClient* newClient() {
-    if (is_rand_req_cnt_) {
-      return new EchoClient(epoll_fd_, 0);
+  EchoClient* newClient(const std::string& message) {
+    EchoClient* client = nullptr;
+    if (is_rand_req_count_) {
+      client = new EchoClient(epoll_fd_, 0);
+    } else {
+      client = new EchoClient(epoll_fd_);
     }
-    return new EchoClient(epoll_fd_);
+    client->SetEchoMessage(message);
+    return client;
   }
 
  private:
@@ -49,6 +61,7 @@ class ClientManager {
   Timer* timer_;  // 定时器
   EchoClient** clients_;  // 客户端连接池
   int count_;  // 客户端连接池大小
+  std::string message_;  // 要发送的消息
   bool is_rand_req_count_;  // 是否随机请求次数
 };
 }  // namespace BenchMark

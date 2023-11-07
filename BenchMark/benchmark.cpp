@@ -22,15 +22,13 @@ void usage() {
   cout << endl;
 }
 
-void finish(void *data) {
-  // TODO
-}
+void finish(void *data) { exit(0); }
 
 void clientManagerCheck(void *data) {
   ClientManager *client_manager = (ClientManager *)data;
-  int32_t create_client_cnt = 0;
-  client_manager->CheckStatus(create_client_cnt);
-  cout << "create client count = " << create_client_cnt << endl;
+  int32_t create_client_count = 0;
+  client_manager->CheckStatus(create_client_count);
+  cout << "create client count = " << create_client_count << endl;
   // 重新注册定时器
   client_manager->GetTimer()->Register(clientManagerCheck, data, 1000);
 }
@@ -58,7 +56,8 @@ int main(int argc, char *argv[]) {
     return -1;
   }
   Timer timer;
-  ClientManager client_manager(ip, port, epoll_fd, &timer, client_count, true);
+  std::string message(pkt_size + 1, 'a');
+  ClientManager client_manager(ip, port, epoll_fd, &timer, client_count, message, true);
   timer.Register(finish, nullptr, run_time * 1000);
   timer.Register(clientManagerCheck, &client_manager, 1000);
   while (true) {
@@ -87,76 +86,3 @@ int main(int argc, char *argv[]) {
   }
   return 0;
 }
-
-/*
- * while (true) {
-      oneTimer = idle_connection_timer_.GetLastTimer(timerData);
-      if (oneTimer) {
-        msec = idle_connection_timer_.TimeOutMs(timerData);
-      }
-      int num = epoll_wait(main_epoll_fd_, events, 2048, msec);
-      if (num < 0) {
-        ERROR("epoll_wait failed, errMsg[%s]", strerror(errno));
-        continue;
-      } else if (num == 0) {  // 没有事件了，下次调用epoll_wait大概率被挂起
-        sleep(0);  // 这里直接sleep(0)让出cpu。大概率被挂起，这里主动让出cpu，可以减少一次epoll_wait的调用
-        msec = -1;  // 大概率被挂起，故这里超时时间设置为-1
-      } else {
-        msec = 0;  // 下次大概率还有事件，故msec设置为0
-      }
-      for (int i = 0; i < num; i++) {
-        EventData *data = (EventData *)events[i].data.ptr;
-        data->events_ = events[i].events;
-        mainEventHandler(data);
-      }
-      if (oneTimer) idle_connection_timer_.Run(timerData);  // 处理定时器
-    }
- * */
-
-/*
-
-  bool isMultiIo = (std::string(argv[3]) == "1");
-  EchoServer::Conn conn(sockFd, epollFd, isMultiIo);
-  EchoServer::SetNotBlock(sockFd);
-  EchoServer::AddReadEvent(&conn);
-  while (true) {
-    int num = epoll_wait(epollFd, events, 2048, -1);
-    if (num < 0) {
-      perror("epoll_wait failed");
-      continue;
-    }
-    for (int i = 0; i < num; i++) {
-      EchoServer::Conn *conn = (EchoServer::Conn *)events[i].data.ptr;
-      if (conn->Fd() == sockFd) {
-        EchoServer::LoopAccept(sockFd, 2048, [epollFd, isMultiIo](int clientFd) {
-          EchoServer::Conn *conn = new EchoServer::Conn(clientFd, epollFd, isMultiIo);
-          EchoServer::SetNotBlock(clientFd);
-          EchoServer::AddReadEvent(conn);  // 监听可读事件
-        });
-        continue;
-      }
-      auto releaseConn = [&conn]() {
-        EchoServer::ClearEvent(conn);
-        delete conn;
-      };
-      if (events[i].events & EPOLLIN) {  // 可读
-        if (not conn->Read()) {          // 执行读失败
-          releaseConn();
-          continue;
-        }
-        if (conn->OneMessage()) {             // 判断是否要触发写事件
-          EchoServer::ModToWriteEvent(conn);  // 修改成只监控可写事件
-        }
-      }
-      if (events[i].events & EPOLLOUT) {  // 可写
-        if (not conn->Write()) {          // 执行写失败
-          releaseConn();
-          continue;
-        }
-        if (conn->FinishWrite()) {  // 完成了请求的应答写，则可以释放连接
-          releaseConn();
-        }
-      }
-    }
-  }
- */

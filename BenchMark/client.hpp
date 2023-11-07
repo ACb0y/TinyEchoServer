@@ -16,6 +16,7 @@ enum ClientStatus {
   RecvResponse = 5,  // 接收应答
   Success = 6,  // 成功处理完一次请求
   Failure = 7,  // 失败（每个状态都可能跳转到这个状态）
+  Finish = 8,  // 客户端read返回了0
 };
 
 class EchoClient {
@@ -30,13 +31,21 @@ class EchoClient {
   ClientStatus GetStatus() { return status_; }
   void SetEchoMessage(const std::string& message) { message_ = message; }
   bool IsValid() {
-    if (Failure == status_) {
+    if (Failure == status_ || Finish == status_) {
       return false;
     }
     bool is_valid = true;
-    // 发送完请求之后，2秒还没收完应答，请求超时
-    if (RecvResponse == status_ && time(nullptr) - last_req_send_time_ >= 2) {
-      is_valid = false;
+    // connect超时
+    if (Connecting == status_ || ConnectSuccess == status_) {
+      if ((GetCurrentTimeUs() - last_op) / 1000 >= 2000) {
+        is_valid = false;
+      }
+    }
+    // 读写超时
+    if (SendRequest == status_ || RecvResponse == status_) {
+      if ((GetCurrentTimeUs() - last_op) / 1000 >= 2000) {
+        is_valid = false;
+      }
     }
     // 完成的请求数，已经达到最大设置的数
     if (finish_req_count_ > max_req_count_) {
@@ -58,11 +67,13 @@ class EchoClient {
     int ret = connect(fd_, (struct sockaddr*)&addr, sizeof(addr));
     if (0 == ret) {
       status_ = ConnectSuccess;
+      last_connect_time_us_ = GetCurrentTimeUs();
       AddWriteEvent(epoll_fd_, fd_, this);  // 监控可写事件
       return;
     }
     if (errno == EINPROGRESS) {
       status_ = Connecting;
+      last_connect_time_us_ = GetCurrentTimeUs();
       AddWriteEvent(epoll_fd_, fd_, this);  // 监控可写事件
       return;
     }
@@ -91,18 +102,57 @@ class EchoClient {
 
  private:
   bool checkConnect() {
-    // TODO
-    // return Common::SockOpt::GetSocketError(fd);  // 检查sockFd上是否有错误发生
-    return true;
+    int err = 0;
+    socklen_t errLen = sizeof(err);
+    assert(0 == getsockopt(fd_, SOL_SOCKET, SO_ERROR, &err, &errLen));
+    return 0 == err;
   }
   bool sendRequest() {
+    last_op_time_us_ = GetCurrentTimeUs();
+
     // TODO
-    last_req_send_time_ = time(nullptr);
-    return true;
   }
   bool recvResponse() {
     // TODO
     return true;
+  }
+  /*
+   *  bool Read() {
+    do {
+      ssize_t ret = read(fd_, codec_.Data(), codec_.Len());
+      if (ret == 0) {
+        perror("peer close connection");
+        return false;
+      }
+      if (ret < 0) {
+        if (EINTR == errno) continue;
+        if (EAGAIN == errno or EWOULDBLOCK == errno) return true;
+        perror("read failed");
+        return false;
+      }
+      codec_.DeCode((size_t)ret);
+    } while (is_multi_io_);
+    return true;
+  }
+  bool Write() {
+    do {
+      if (send_len_ == pkt_.UseLen()) return true;
+      ssize_t ret = write(fd_, pkt_.Data() + send_len_, pkt_.UseLen() - send_len_);
+      if (ret < 0) {
+        if (EINTR == errno) continue;
+        if (EAGAIN == errno && EWOULDBLOCK == errno) return true;
+        perror("write failed");
+        return false;
+      }
+      send_len_ += ret;
+    } while (is_multi_io_);
+    return true;
+  }
+   */
+  int64_t GetCurrentTimeUs() {
+    struct timeval current;
+    gettimeofday(&current, NULL);
+    return current.tv_sec * 1000000 + current.tv_usec;  //计算运行的时间，单位微秒
   }
 
  private:
@@ -112,6 +162,8 @@ class EchoClient {
   int finish_req_count_{0};  // 完成的请求数
   ClientStatus status_{Init};  // 客户端状态机
   std::string message_;  // 要发送的消息
-  int64_t last_req_send_time_;  // 最后一个请求的发送时间（单位秒）
+  int64_t last_connect_time_us_{0};  // 最近一次connect时间，单元us
+  int64_t last_send_req_time_us_{0};  // 最近一次发送请求时间，单元us
+  int64_t last_recv_resp_time_us_{0};  // 最近一次接受应答时间，单位us
 };
 }  // namespace BenchMark
