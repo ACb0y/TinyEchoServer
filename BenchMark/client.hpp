@@ -3,10 +3,15 @@
 #include <stdlib.h>
 #include <time.h>
 
+#include <iostream>
 #include <string>
 
 #include "../codec.hpp"
+#include "../common.hpp"
 #include "../epollctl.hpp"
+#include "../percentile.hpp"
+
+using namespace std;
 
 namespace BenchMark {
 enum ClientStatus {
@@ -22,7 +27,8 @@ enum ClientStatus {
 
 class EchoClient {
  public:
-  EchoClient(int epoll_fd, int max_req_count = 10000) : epoll_fd_(epoll_fd), max_req_count_(max_req_count) {
+  EchoClient(int epoll_fd, TinyEcho::Percentile* percentile, int max_req_count = 10000)
+      : epoll_fd_(epoll_fd), percentile_(percentile), max_req_count_(max_req_count) {
     if (max_req_count_ == 0) {
       srand(time(NULL));
       max_req_count_ = (rand() % 9901) + 100;
@@ -30,7 +36,10 @@ class EchoClient {
   }
   int Fd() { return fd_; }
   ClientStatus GetStatus() { return status_; }
-  void SetEchoMessage(const std::string& message) { codec_.EnCode(message, send_pkt_); }
+  void SetEchoMessage(const std::string& message) {
+    send_message_ = message;
+    codec_.EnCode(message, send_pkt_);
+  }
   bool IsValid() {
     if (Failure == status_ || Finish == status_) {
       return false;
@@ -67,6 +76,7 @@ class EchoClient {
       status_ = Failure;
       return;
     }
+    TinyEcho::SetNotBlock(fd_);  // 设置成非阻塞的
     sockaddr_in addr;
     addr.sin_family = AF_INET;
     addr.sin_port = htons(int16_t(port));
@@ -111,9 +121,14 @@ class EchoClient {
     int err = 0;
     socklen_t errLen = sizeof(err);
     assert(0 == getsockopt(fd_, SOL_SOCKET, SO_ERROR, &err, &errLen));
+    cout << "checkConnect err = " << err << endl;
+    if (0 == err) {
+      status_ = ConnectSuccess;
+    }
     return 0 == err;
   }
   bool sendRequest() {
+    cout << "sendRequest deal" << endl;
     last_send_req_time_us_ = GetCurrentTimeUs();
     ssize_t ret = write(fd_, send_pkt_.Data() + send_len_, send_pkt_.UseLen() - send_len_);
     if (ret < 0) {
@@ -127,9 +142,11 @@ class EchoClient {
     return true;
   }
   bool recvResponse() {
+    cout << "recvResponse deal" << endl;
     last_recv_resp_time_us_ = GetCurrentTimeUs();
     ssize_t ret = read(fd_, codec_.Data(), codec_.Len());
     if (ret == 0) {  // 对端关闭连接
+      cout << "finish peer close" << endl;
       status_ = Finish;
       return true;
     }
@@ -138,12 +155,19 @@ class EchoClient {
       return false;
     }
     codec_.DeCode(ret);
-    if (codec_.GetMessage() != nullptr) {
-      status_ = Success;
+    std::string* recv_message = codec_.GetMessage();
+    if (recv_message != nullptr) {
+      if (*recv_message == send_message_) {
+        status_ = Success;
+      } else {
+        status_ = Failure;
+      }
+      delete recv_message;
     }
     return true;
   }
   bool dealSuccess() {
+    cout << "deal Success" << endl;
     finish_req_count_++;  // 统计请求成功数
     status_ = SendRequest;
     return true;
@@ -158,14 +182,16 @@ class EchoClient {
  private:
   int fd_{-1};  // 客户端关联的fd
   int epoll_fd_{-1};  // 关联的epoll_fd
-  int max_req_count_{0};  // 客户端最多执行多少次请求
   int finish_req_count_{0};  // 完成的请求数
   ClientStatus status_{Init};  // 客户端状态机
+  std::string send_message_;  // 发送的消息
   size_t send_len_{0};  // 完成发送的数据长度
   TinyEcho::Packet send_pkt_;  // 发送的数据包
-  TinyEcho::Codec codec_;
+  TinyEcho::Codec codec_;  // 用于请求的编解码
   int64_t last_connect_time_us_{0};  // 最近一次connect时间，单元us
   int64_t last_send_req_time_us_{0};  // 最近一次发送请求时间，单元us
   int64_t last_recv_resp_time_us_{0};  // 最近一次接受应答时间，单位us
+  TinyEcho::Percentile* percentile_;
+  int max_req_count_{0};  // 客户端最多执行多少次请求
 };
 }  // namespace BenchMark

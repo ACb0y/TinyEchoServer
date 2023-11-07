@@ -22,7 +22,12 @@ void usage() {
   cout << endl;
 }
 
-void finish(void *data) { exit(0); }
+void finish(void *data) {
+  // ClientManager *client_manager = (ClientManager *)data;
+  // TODO 输出统计信息。
+  cout << "finish deal" << endl;
+  exit(0);
+}
 
 void clientManagerCheck(void *data) {
   ClientManager *client_manager = (ClientManager *)data;
@@ -58,7 +63,7 @@ int main(int argc, char *argv[]) {
   Timer timer;
   std::string message(pkt_size + 1, 'a');
   ClientManager client_manager(ip, port, epoll_fd, &timer, client_count, message, true);
-  timer.Register(finish, nullptr, run_time * 1000);
+  timer.Register(finish, &client_manager, run_time * 1000);
   timer.Register(clientManagerCheck, &client_manager, 1000);
   while (true) {
     int64_t msec = 0;
@@ -66,7 +71,7 @@ int main(int argc, char *argv[]) {
     TimerData timer_data;
     oneTimer = timer.GetLastTimer(timer_data);
     if (oneTimer) {
-      msec = timer.GetLastTimer(timer_data);
+      msec = timer.TimeOutMs(timer_data);
     }
     int num = epoll_wait(epoll_fd, events, 2048, msec);
     if (num < 0) {
@@ -80,7 +85,8 @@ int main(int argc, char *argv[]) {
     }
     for (int i = 0; i < num; i++) {
       EchoClient *client = (EchoClient *)events[i].data.ptr;
-      client->Deal();
+      bool result = client->Deal();
+      cout << "deal result = " << result << endl;
     }
     if (oneTimer) timer.Run(timer_data);  // 处理定时器
   }

@@ -2,6 +2,7 @@
 
 #include <string>
 
+#include "../percentile.hpp"
 #include "../timer.h"
 #include "client.hpp"
 
@@ -46,9 +47,9 @@ class ClientManager {
   EchoClient* newClient(const std::string& message) {
     EchoClient* client = nullptr;
     if (is_rand_req_count_) {
-      client = new EchoClient(epoll_fd_, 0);
+      client = new EchoClient(epoll_fd_, &percentile_, 0);
     } else {
-      client = new EchoClient(epoll_fd_);
+      client = new EchoClient(epoll_fd_, &percentile_);
     }
     client->SetEchoMessage(message);
     return client;
@@ -63,5 +64,6 @@ class ClientManager {
   int count_;  // 客户端连接池大小
   std::string message_;  // 要发送的消息
   bool is_rand_req_count_;  // 是否随机请求次数
+  TinyEcho::Percentile percentile_;  // 用于统计请求耗时的pctxx数值
 };
 }  // namespace BenchMark
