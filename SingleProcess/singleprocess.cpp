@@ -14,6 +14,7 @@ void handlerClient(int client_fd) {
   if (not RecvMsg(client_fd, msg)) {
     return;
   }
+  cout << "recv_message = " << msg << endl;
   SendMsg(client_fd, msg);
   close(client_fd);
 }

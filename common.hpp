@@ -43,6 +43,7 @@ bool RecvMsg(int fd, std::string &message) {
     }
     codec.DeCode(ret);
   }
+  message = *temp;
   return true;
 }
 

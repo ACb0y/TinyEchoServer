@@ -23,9 +23,9 @@ void usage() {
 }
 
 void finish(void *data) {
-  // ClientManager *client_manager = (ClientManager *)data;
-  // TODO 输出统计信息。
   cout << "finish deal" << endl;
+  ClientManager *client_manager = (ClientManager *)data;
+  client_manager->PrintPctData();
   exit(0);
 }
 

@@ -3,9 +3,11 @@
 #include <arpa/inet.h>
 #include <string.h>
 
+#include <iostream>
 #include <string>
 
 #include "packet.hpp"
+using namespace std;
 
 namespace TinyEcho {
 #define TINY_ECHO_HEAD_LEN 4
@@ -72,8 +74,11 @@ class Codec {
       decode_break = true;
       return true;
     }
+    cout << "body_len_ = " << body_len_ << endl;
     if (msg_ == nullptr) {
-      msg_ = new std::string((const char *)*data, body_len_);
+      msg_ = new std::string();
+      msg_->append((const char *)*data, body_len_);
+      cout << "msg = " << *msg_ << endl;
     }
     need_parse_len -= body_len_;
     (*data) += body_len_;

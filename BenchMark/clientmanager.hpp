@@ -31,8 +31,15 @@ class ClientManager {
     delete[] clients_;
   }
   Timer* GetTimer() { return timer_; }
+  void PrintPctData() { percentile_.PrintPctData(); }
   void CheckStatus(int32_t& create_client_count) {  // 检查客户端连接状态，并模拟了客户端的随机关闭和随机创建
     for (int i = 0; i < count_; i++) {
+      int64_t success_count{0};
+      int64_t failure_count{0};
+      clients_[i]->GetDealStat(success_count, failure_count);
+      assert(failure_count <= 1);
+      success_count_ += success_count;
+      failure_count_ += failure_count;
       if (clients_[i]->IsValid()) {
         continue;
       }
@@ -64,6 +71,8 @@ class ClientManager {
   int count_;  // 客户端连接池大小
   std::string message_;  // 要发送的消息
   bool is_rand_req_count_;  // 是否随机请求次数
+  int64_t success_count_{0};  // 成功数统计
+  int64_t failure_count_{0};  // 失败数统计
   TinyEcho::Percentile percentile_;  // 用于统计请求耗时的pctxx数值
 };
 }  // namespace BenchMark

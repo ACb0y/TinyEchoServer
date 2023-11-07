@@ -31,7 +31,7 @@ class EchoClient {
       : epoll_fd_(epoll_fd), percentile_(percentile), max_req_count_(max_req_count) {
     if (max_req_count_ == 0) {
       srand(time(NULL));
-      max_req_count_ = (rand() % 9901) + 100;
+      max_req_count_ = (rand() % 10000) + 100;
     }
   }
   int Fd() { return fd_; }
@@ -39,6 +39,10 @@ class EchoClient {
   void SetEchoMessage(const std::string& message) {
     send_message_ = message;
     codec_.EnCode(message, send_pkt_);
+  }
+  void GetDealStat(int64_t& success_count, int64_t& failure_count) {
+    success_count += success_count_;
+    failure_count += failure_count_;
   }
   bool IsValid() {
     if (Failure == status_ || Finish == status_) {
@@ -64,16 +68,19 @@ class EchoClient {
       }
     }
     // 完成的请求数，已经达到最大设置的数
-    if (finish_req_count_ > max_req_count_) {
+    if (success_count_ > max_req_count_) {
       is_valid = false;
     }
-    ClearEvent(epoll_fd_, fd_);
+    if (not is_valid) {
+      ClearEvent(epoll_fd_, fd_);
+    }
     return is_valid;
   }
   void Connect(const std::string& ip, int64_t port) {
     fd_ = socket(AF_INET, SOCK_STREAM, 0);
     if (fd_ < 0) {
       status_ = Failure;
+      failure_count_++;
       return;
     }
     TinyEcho::SetNotBlock(fd_);  // 设置成非阻塞的
@@ -94,6 +101,7 @@ class EchoClient {
       return;
     }
     status_ = Failure;
+    failure_count_++;
     return;
   }
   bool Deal() {  // 本函数实现状态机的流转
@@ -111,6 +119,7 @@ class EchoClient {
     }
     if (not result) {
       status_ = Failure;
+      failure_count_++;
       ClearEvent(epoll_fd_, fd_);
     }
     return result;
@@ -148,6 +157,7 @@ class EchoClient {
     if (ret == 0) {  // 对端关闭连接
       cout << "finish peer close" << endl;
       status_ = Finish;
+      ClearEvent(epoll_fd_, fd_);
       return true;
     }
     if (ret < 0) {
@@ -157,19 +167,24 @@ class EchoClient {
     codec_.DeCode(ret);
     std::string* recv_message = codec_.GetMessage();
     if (recv_message != nullptr) {
-      if (*recv_message == send_message_) {
-        status_ = Success;
-      } else {
-        status_ = Failure;
+      cout << "recv_message = " << *recv_message << endl;
+      cout << "send_message = " << send_message_ << endl;
+      if (*recv_message != send_message_) {
+        delete recv_message;
+        return false;
       }
+      status_ = Success;
       delete recv_message;
     }
     return true;
   }
   bool dealSuccess() {
-    cout << "deal Success" << endl;
-    finish_req_count_++;  // 统计请求成功数
+    int64_t spend_time_us = last_recv_resp_time_us_ - last_send_req_time_us_;
+    cout << "deal Success, spend_time_us = " << spend_time_us << endl;
+    send_len_ = 0;
+    success_count_++;  // 统计请求成功数
     status_ = SendRequest;
+    percentile_->Stat(spend_time_us);
     return true;
   }
 
@@ -182,7 +197,6 @@ class EchoClient {
  private:
   int fd_{-1};  // 客户端关联的fd
   int epoll_fd_{-1};  // 关联的epoll_fd
-  int finish_req_count_{0};  // 完成的请求数
   ClientStatus status_{Init};  // 客户端状态机
   std::string send_message_;  // 发送的消息
   size_t send_len_{0};  // 完成发送的数据长度
@@ -193,5 +207,7 @@ class EchoClient {
   int64_t last_recv_resp_time_us_{0};  // 最近一次接受应答时间，单位us
   TinyEcho::Percentile* percentile_;
   int max_req_count_{0};  // 客户端最多执行多少次请求
+  int64_t failure_count_{0};  // 失败次数
+  int64_t success_count_{0};  // 成功次数
 };
 }  // namespace BenchMark
