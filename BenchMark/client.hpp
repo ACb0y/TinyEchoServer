@@ -36,14 +36,20 @@ class EchoClient {
     }
     bool is_valid = true;
     // connect超时
-    if (Connecting == status_ || ConnectSuccess == status_) {
-      if ((GetCurrentTimeUs() - last_op) / 1000 >= 2000) {
+    if (Connecting == status_) {
+      if ((GetCurrentTimeUs() - last_connect_time_us_) / 1000 >= 2000) {
         is_valid = false;
       }
     }
-    // 读写超时
-    if (SendRequest == status_ || RecvResponse == status_) {
-      if ((GetCurrentTimeUs() - last_op) / 1000 >= 2000) {
+    // 写超时
+    if (SendRequest == status_) {
+      if ((GetCurrentTimeUs() - last_send_req_time_us_) / 1000 >= 2000) {
+        is_valid = false;
+      }
+    }
+    // 读超时
+    if (RecvResponse == status_) {
+      if ((GetCurrentTimeUs() - last_recv_resp_time_us_) / 1000 >= 2000) {
         is_valid = false;
       }
     }
@@ -67,7 +73,6 @@ class EchoClient {
     int ret = connect(fd_, (struct sockaddr*)&addr, sizeof(addr));
     if (0 == ret) {
       status_ = ConnectSuccess;
-      last_connect_time_us_ = GetCurrentTimeUs();
       AddWriteEvent(epoll_fd_, fd_, this);  // 监控可写事件
       return;
     }
@@ -108,9 +113,10 @@ class EchoClient {
     return 0 == err;
   }
   bool sendRequest() {
-    last_op_time_us_ = GetCurrentTimeUs();
+    last_send_req_time_us_ = GetCurrentTimeUs();
 
     // TODO
+    return true;
   }
   bool recvResponse() {
     // TODO

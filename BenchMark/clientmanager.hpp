@@ -15,8 +15,8 @@ class ClientManager {
         epoll_fd_(epoll_fd),
         timer_(timer),
         count_(count),
-        is_rand_req_count_(is_rand_req_count),
-        message_(message) {
+        message_(message),
+        is_rand_req_count_(is_rand_req_count) {
     clients_ = new EchoClient*[count];
     for (int i = 0; i < count; i++) {
       clients_[i] = newClient(message);
