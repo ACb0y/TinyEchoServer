@@ -25,18 +25,21 @@ class Percentile {
     return true;
   }
   void PrintPctData() { printData(); }
+  void PrintAvgPctData() {
+    // TODO 输出pctxx的平均值。只计算每10万成功请求的数据。
+  }
 
  private:
   void printData() {
+    // TODO 如果数量不等于10W，之前没输出过，就输出最后一批数据的统计值。
     if (stat_data_.size() <= 0) return;
     std::sort(stat_data_.begin(), stat_data_.end());
-    double pct50, pct95, pct99, pct999;
+    double pct50, pct95, pct99;
     GetPercentile(0.50, pct50);
     GetPercentile(0.95, pct95);
     GetPercentile(0.99, pct99);
-    GetPercentile(0.999, pct999);
-    cout << "per " << std::to_string(stat_data_.size()) << " request stat data" << endl;
-    cout << "pct50[" << pct50 << "],pct95[" << pct95 << "],pct99[" << pct99 << "],pct999[" << pct999 << "]" << endl;
+    cout << "per " << std::to_string(stat_data_.size()) << " request stat data -> ";
+    cout << "pct50[" << pct50 << "],pct95[" << pct95 << "],pct99[" << pct99 << "]" << endl;
     stat_data_.clear();
   }
 

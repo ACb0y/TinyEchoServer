@@ -33,9 +33,11 @@ void clientManagerCheck(void *data) {
   ClientManager *client_manager = (ClientManager *)data;
   int32_t create_client_count = 0;
   client_manager->CheckStatus(create_client_count);
-  cout << "create client count = " << create_client_count << endl;
+  //  if (create_client_count > 0) {
+  //    cout << "create client count = " << create_client_count << endl;
+  //  }
   // 重新注册定时器
-  client_manager->GetTimer()->Register(clientManagerCheck, data, 1000);
+  client_manager->GetTimer()->Register(clientManagerCheck, data, 1);
 }
 
 int main(int argc, char *argv[]) {
@@ -64,7 +66,7 @@ int main(int argc, char *argv[]) {
   std::string message(pkt_size + 1, 'a');
   ClientManager client_manager(ip, port, epoll_fd, &timer, client_count, message, true);
   timer.Register(finish, &client_manager, run_time * 1000);
-  timer.Register(clientManagerCheck, &client_manager, 1000);
+  timer.Register(clientManagerCheck, &client_manager, 1);
   while (true) {
     int64_t msec = 0;
     bool oneTimer = false;
@@ -85,8 +87,7 @@ int main(int argc, char *argv[]) {
     }
     for (int i = 0; i < num; i++) {
       EchoClient *client = (EchoClient *)events[i].data.ptr;
-      bool result = client->Deal();
-      cout << "deal result = " << result << endl;
+      client->Deal();
     }
     if (oneTimer) timer.Run(timer_data);  // 处理定时器
   }

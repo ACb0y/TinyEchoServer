@@ -37,15 +37,16 @@ class ClientManager {
   }
   void CheckStatus(int32_t& create_client_count) {  // 检查客户端连接状态，并模拟了客户端的随机关闭和随机创建
     for (int i = 0; i < count_; i++) {
+      if (clients_[i]->IsValid()) {
+        continue;
+      }
       int64_t success_count{0};
       int64_t failure_count{0};
+      // TODO 能区分不同的失败类型，connect超时，读写超时，还是读写失败
       clients_[i]->GetDealStat(success_count, failure_count);
       assert(failure_count <= 1);
       success_count_ += success_count;
       failure_count_ += failure_count;
-      if (clients_[i]->IsValid()) {
-        continue;
-      }
       delete clients_[i];
       create_client_count++;
       clients_[i] = newClient(message_);

@@ -53,18 +53,25 @@ class EchoClient {
     if (Connecting == status_) {
       if ((GetCurrentTimeUs() - last_connect_time_us_) / 1000 >= 2000) {
         is_valid = false;
+        failure_count_++;
+        //        cout << "connect time out, current_time_us[" << GetCurrentTimeUs() << "],last_connect_time_us["
+        //             << last_connect_time_us_ << "]" << endl;
       }
     }
     // 写超时
     if (SendRequest == status_) {
-      if ((GetCurrentTimeUs() - last_send_req_time_us_) / 1000 >= 2000) {
+      if (last_send_req_time_us_ != 0 && (GetCurrentTimeUs() - last_send_req_time_us_) / 1000 >= 2000) {
         is_valid = false;
+        failure_count_++;
+        cout << "send time out" << endl;
       }
     }
     // 读超时
     if (RecvResponse == status_) {
-      if ((GetCurrentTimeUs() - last_recv_resp_time_us_) / 1000 >= 2000) {
+      if (last_recv_resp_time_us_ != 0 && (GetCurrentTimeUs() - last_recv_resp_time_us_) / 1000 >= 2000) {
         is_valid = false;
+        failure_count_++;
+        cout << "recv time out" << endl;
       }
     }
     // 完成的请求数，已经达到最大设置的数
@@ -130,14 +137,12 @@ class EchoClient {
     int err = 0;
     socklen_t errLen = sizeof(err);
     assert(0 == getsockopt(fd_, SOL_SOCKET, SO_ERROR, &err, &errLen));
-    cout << "checkConnect err = " << err << endl;
     if (0 == err) {
       status_ = ConnectSuccess;
     }
     return 0 == err;
   }
   bool sendRequest() {
-    cout << "sendRequest deal" << endl;
     last_send_req_time_us_ = GetCurrentTimeUs();
     ssize_t ret = write(fd_, send_pkt_.Data() + send_len_, send_pkt_.UseLen() - send_len_);
     if (ret < 0) {
@@ -151,11 +156,9 @@ class EchoClient {
     return true;
   }
   bool recvResponse() {
-    cout << "recvResponse deal" << endl;
     last_recv_resp_time_us_ = GetCurrentTimeUs();
     ssize_t ret = read(fd_, codec_.Data(), codec_.Len());
     if (ret == 0) {  // 对端关闭连接
-      cout << "finish peer close" << endl;
       status_ = Finish;
       ClearEvent(epoll_fd_, fd_);
       return true;
@@ -167,8 +170,6 @@ class EchoClient {
     codec_.DeCode(ret);
     std::string* recv_message = codec_.GetMessage();
     if (recv_message != nullptr) {
-      cout << "recv_message = " << *recv_message << endl;
-      cout << "send_message = " << send_message_ << endl;
       if (*recv_message != send_message_) {
         delete recv_message;
         return false;
@@ -180,8 +181,9 @@ class EchoClient {
   }
   bool dealSuccess() {
     int64_t spend_time_us = last_recv_resp_time_us_ - last_send_req_time_us_;
-    cout << "deal Success, spend_time_us = " << spend_time_us << endl;
     send_len_ = 0;
+    last_send_req_time_us_ = 0;
+    last_recv_resp_time_us_ = 0;
     success_count_++;  // 统计请求成功数
     status_ = SendRequest;
     percentile_->Stat(spend_time_us);
