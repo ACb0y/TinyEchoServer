@@ -13,7 +13,6 @@ class Percentile {
   Percentile() = default;
   void Stat(int64_t value) {
     stat_data_.push_back(value);
-    total_++;
     if (stat_data_.size() >= 100000) {
       printData();
       already_print_ = true;

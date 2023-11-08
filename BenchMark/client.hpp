@@ -27,11 +27,11 @@ enum ClientStatus {
 
 class EchoClient {
  public:
-  EchoClient(int epoll_fd, TinyEcho::Percentile* percentile, int max_req_count = 10000)
+  EchoClient(int epoll_fd, TinyEcho::Percentile* percentile, int max_req_count = 100000)
       : epoll_fd_(epoll_fd), percentile_(percentile), max_req_count_(max_req_count) {
     if (max_req_count_ == 0) {
       srand(time(NULL));
-      max_req_count_ = (rand() % 10000) + 100;
+      max_req_count_ = (rand() % 100000) + 1000;  // 至少请求1000次
     }
   }
   int Fd() { return fd_; }
@@ -144,6 +144,8 @@ class EchoClient {
     assert(0 == getsockopt(fd_, SOL_SOCKET, SO_ERROR, &err, &errLen));
     if (0 == err) {
       status_ = ConnectSuccess;
+    } else {
+      connect_failure_count_++;
     }
     return 0 == err;
   }

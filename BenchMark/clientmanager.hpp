@@ -51,6 +51,7 @@ class ClientManager {
       clients_[i]->GetDealStat(success_count, failure_count, connect_failure_count, read_failure_count,
                                write_failure_count);
       assert(failure_count <= 1 && connect_failure_count <= 1 && read_failure_count <= 1 && write_failure_count <= 1);
+      assert(failure_count == (connect_failure_count + read_failure_count + write_failure_count));
       success_count_ += success_count;
       failure_count_ += failure_count;
       connect_failure_count_ += connect_failure_count;
