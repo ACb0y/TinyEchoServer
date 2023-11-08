@@ -25,7 +25,7 @@ void usage() {
 void finish(void *data) {
   cout << "finish deal" << endl;
   ClientManager *client_manager = (ClientManager *)data;
-  client_manager->PrintPctData();
+  client_manager->PrintStatData();
   exit(0);
 }
 
