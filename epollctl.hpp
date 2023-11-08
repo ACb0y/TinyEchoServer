@@ -50,6 +50,13 @@ inline void ModToWriteEvent(int epoll_fd, int fd, void *user_data) {
   assert(epoll_ctl(epoll_fd, EPOLL_CTL_MOD, fd, &event) != -1);
 }
 
+inline void ModToReadEvent(int epoll_fd, int fd, void *user_data) {
+  epoll_event event;
+  event.data.ptr = user_data;
+  event.events = EPOLLIN;
+  assert(epoll_ctl(epoll_fd, EPOLL_CTL_MOD, fd, &event) != -1);
+}
+
 inline void ClearEvent(TinyEcho::Conn *conn, bool is_close = true) {
   assert(epoll_ctl(conn->EpollFd(), EPOLL_CTL_DEL, conn->Fd(), NULL) != -1);
   if (is_close) close(conn->Fd());  // close操作需要EPOLL_CTL_DEL之后调用，否则调用epoll_ctl()删除fd会失败

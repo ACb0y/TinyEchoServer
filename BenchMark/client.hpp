@@ -40,9 +40,13 @@ class EchoClient {
     send_message_ = message;
     codec_.EnCode(message, send_pkt_);
   }
-  void GetDealStat(int64_t& success_count, int64_t& failure_count) {
+  void GetDealStat(int64_t& success_count, int64_t& failure_count, int64_t& connect_failure_count,
+                   int64_t& read_failure_count, int64_t& write_failure_count) {
     success_count += success_count_;
     failure_count += failure_count_;
+    connect_failure_count += connect_failure_count_;
+    read_failure_count += read_failure_count_;
+    write_failure_count += write_failure_count_;
   }
   bool IsValid() {
     if (Failure == status_ || Finish == status_) {
@@ -54,8 +58,7 @@ class EchoClient {
       if ((GetCurrentTimeUs() - last_connect_time_us_) / 1000 >= 2000) {
         is_valid = false;
         failure_count_++;
-        //        cout << "connect time out, current_time_us[" << GetCurrentTimeUs() << "],last_connect_time_us["
-        //             << last_connect_time_us_ << "]" << endl;
+        connect_failure_count_++;
       }
     }
     // 写超时
@@ -63,7 +66,7 @@ class EchoClient {
       if (last_send_req_time_us_ != 0 && (GetCurrentTimeUs() - last_send_req_time_us_) / 1000 >= 2000) {
         is_valid = false;
         failure_count_++;
-        cout << "send time out" << endl;
+        write_failure_count_++;
       }
     }
     // 读超时
@@ -71,7 +74,7 @@ class EchoClient {
       if (last_recv_resp_time_us_ != 0 && (GetCurrentTimeUs() - last_recv_resp_time_us_) / 1000 >= 2000) {
         is_valid = false;
         failure_count_++;
-        cout << "recv time out" << endl;
+        read_failure_count_++;
       }
     }
     // 完成的请求数，已经达到最大设置的数
@@ -88,6 +91,7 @@ class EchoClient {
     if (fd_ < 0) {
       status_ = Failure;
       failure_count_++;
+      connect_failure_count_++;
       return;
     }
     TinyEcho::SetNotBlock(fd_);  // 设置成非阻塞的
@@ -109,6 +113,7 @@ class EchoClient {
     }
     status_ = Failure;
     failure_count_++;
+    connect_failure_count_++;
     return;
   }
   bool Deal() {  // 本函数实现状态机的流转
@@ -147,11 +152,13 @@ class EchoClient {
     ssize_t ret = write(fd_, send_pkt_.Data() + send_len_, send_pkt_.UseLen() - send_len_);
     if (ret < 0) {
       if (EINTR == errno || EAGAIN == errno || EWOULDBLOCK == errno) return true;
+      write_failure_count_++;
       return false;
     }
     send_len_ += ret;
     if (send_len_ == send_pkt_.UseLen()) {
       status_ = RecvResponse;
+      ModToReadEvent(epoll_fd_, fd_, this);
     }
     return true;
   }
@@ -165,6 +172,7 @@ class EchoClient {
     }
     if (ret < 0) {
       if (EINTR == errno || EAGAIN == errno || EWOULDBLOCK == errno) return true;
+      read_failure_count_++;
       return false;
     }
     codec_.DeCode(ret);
@@ -187,6 +195,7 @@ class EchoClient {
     success_count_++;  // 统计请求成功数
     status_ = SendRequest;
     percentile_->Stat(spend_time_us);
+    ModToWriteEvent(epoll_fd_, fd_, this);
     return true;
   }
 
@@ -204,12 +213,15 @@ class EchoClient {
   size_t send_len_{0};  // 完成发送的数据长度
   TinyEcho::Packet send_pkt_;  // 发送的数据包
   TinyEcho::Codec codec_;  // 用于请求的编解码
-  int64_t last_connect_time_us_{0};  // 最近一次connect时间，单元us
-  int64_t last_send_req_time_us_{0};  // 最近一次发送请求时间，单元us
+  int64_t last_connect_time_us_{0};  // 最近一次connect时间，单位us
+  int64_t last_send_req_time_us_{0};  // 最近一次发送请求时间，单位us
   int64_t last_recv_resp_time_us_{0};  // 最近一次接受应答时间，单位us
   TinyEcho::Percentile* percentile_;
   int max_req_count_{0};  // 客户端最多执行多少次请求
   int64_t failure_count_{0};  // 失败次数
   int64_t success_count_{0};  // 成功次数
+  int64_t connect_failure_count_{0};  // 细分的失败统计，连接失败数
+  int64_t read_failure_count_{0};  // 细分的失败统计，读失败数
+  int64_t write_failure_count_{0};  // 细分的失败统计，写失败数
 };
 }  // namespace BenchMark

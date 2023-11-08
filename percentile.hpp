@@ -50,20 +50,18 @@ class Percentile {
     stat_data_.clear();
   }
   void printAvgData() {
-    cout << "total success = " << total_ << endl;
     if (pct50_data_.size() <= 0) return;
     double pct50 = std::accumulate(pct50_data_.begin(), pct50_data_.end(), 0.0) / pct50_data_.size();
     double pct95 = std::accumulate(pct95_data_.begin(), pct95_data_.end(), 0.0) / pct95_data_.size();
     double pct99 = std::accumulate(pct99_data_.begin(), pct99_data_.end(), 0.0) / pct99_data_.size();
-    cout << "avg data -> pct50[" << pct50 << "],pct95[" << pct95 << "],pct99[" << pct99 << "]" << endl;
+    cout << "pct avg data -> pct50[" << pct50 << "],pct95[" << pct95 << "],pct99[" << pct99 << "]" << endl;
   }
 
  private:
   bool already_print_{false};
-  std::vector<int64_t> stat_data_;  // 原始统计数据
+  std::vector<int64_t> stat_data_;
   std::vector<double> pct50_data_;
   std::vector<double> pct95_data_;
   std::vector<double> pct99_data_;
-  int64_t total_{0};
 };
 }  // namespace TinyEcho

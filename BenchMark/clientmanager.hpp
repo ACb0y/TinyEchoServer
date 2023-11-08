@@ -32,7 +32,9 @@ class ClientManager {
   }
   Timer* GetTimer() { return timer_; }
   void PrintStatData() {
-    cout << "success_count[" << success_count_ << "],failure_count[" << failure_count_ << "]" << endl;
+    cout << "success[" << success_count_ << "],failure[" << failure_count_ << "],connect_failure["
+         << connect_failure_count_ << "],read_failure[" << read_failure_count_ << "],write_failure["
+         << write_failure_count_ << "]" << endl;
     percentile_.PrintPctData();
     percentile_.PrintAvgPctData();
   }
@@ -43,11 +45,17 @@ class ClientManager {
       }
       int64_t success_count{0};
       int64_t failure_count{0};
-      // TODO 能区分不同的失败类型，connect超时，读写超时，还是读写失败
-      clients_[i]->GetDealStat(success_count, failure_count);
-      assert(failure_count <= 1);
+      int64_t connect_failure_count{0};
+      int64_t read_failure_count{0};
+      int64_t write_failure_count{0};
+      clients_[i]->GetDealStat(success_count, failure_count, connect_failure_count, read_failure_count,
+                               write_failure_count);
+      assert(failure_count <= 1 && connect_failure_count <= 1 && read_failure_count <= 1 && write_failure_count <= 1);
       success_count_ += success_count;
       failure_count_ += failure_count;
+      connect_failure_count_ += connect_failure_count;
+      read_failure_count_ += read_failure_count;
+      write_failure_count_ += write_failure_count;
       delete clients_[i];
       create_client_count++;
       clients_[i] = newClient(message_);
@@ -78,6 +86,9 @@ class ClientManager {
   bool is_rand_req_count_;  // 是否随机请求次数
   int64_t success_count_{0};  // 成功数统计
   int64_t failure_count_{0};  // 失败数统计
+  int64_t connect_failure_count_{0};  // 细分失败类型统计，连接失败
+  int64_t read_failure_count_{0};  // 细分失败类型统计，读失败
+  int64_t write_failure_count_{0};  // 细分失败类型统计，写失败
   TinyEcho::Percentile percentile_;  // 用于统计请求耗时的pctxx数值
 };
 }  // namespace BenchMark
