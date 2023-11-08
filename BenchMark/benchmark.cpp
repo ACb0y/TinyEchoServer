@@ -10,6 +10,7 @@ using namespace std;
 using namespace BenchMark;
 
 void usage() {
+  // 新增一个debug的选项
   cout << "BenchMark -ip 0.0.0.0 -port 1688 -pkt_size 1024 -client_count 200 -run_time 60" << endl;
   cout << "options:" << endl;
   cout << "    -h,--help                      print usage" << endl;

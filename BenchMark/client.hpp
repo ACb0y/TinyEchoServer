@@ -185,6 +185,7 @@ class EchoClient {
         return false;
       }
       status_ = Success;
+      ModToWriteEvent(epoll_fd_, fd_, this);
       delete recv_message;
     }
     return true;
@@ -197,7 +198,6 @@ class EchoClient {
     success_count_++;  // 统计请求成功数
     status_ = SendRequest;
     percentile_->Stat(spend_time_us);
-    ModToWriteEvent(epoll_fd_, fd_, this);
     return true;
   }
 
