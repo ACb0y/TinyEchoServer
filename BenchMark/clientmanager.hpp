@@ -34,6 +34,7 @@ class ClientManager {
   void PrintStatData() {
     cout << "success_count[" << success_count_ << "],failure_count[" << failure_count_ << "]" << endl;
     percentile_.PrintPctData();
+    percentile_.PrintAvgPctData();
   }
   void CheckStatus(int32_t& create_client_count) {  // 检查客户端连接状态，并模拟了客户端的随机关闭和随机创建
     for (int i = 0; i < count_; i++) {

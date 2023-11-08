@@ -23,7 +23,6 @@ void usage() {
 }
 
 void finish(void *data) {
-  cout << "finish deal" << endl;
   ClientManager *client_manager = (ClientManager *)data;
   client_manager->PrintStatData();
   exit(0);
@@ -33,9 +32,6 @@ void clientManagerCheck(void *data) {
   ClientManager *client_manager = (ClientManager *)data;
   int32_t create_client_count = 0;
   client_manager->CheckStatus(create_client_count);
-  //  if (create_client_count > 0) {
-  //    cout << "create client count = " << create_client_count << endl;
-  //  }
   // 重新注册定时器
   client_manager->GetTimer()->Register(clientManagerCheck, data, 1);
 }
