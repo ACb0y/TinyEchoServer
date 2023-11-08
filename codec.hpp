@@ -21,6 +21,13 @@ class Codec {
   ~Codec() {
     if (msg_) delete msg_;
   }
+  void Reset() {
+    pkt_.Reset();
+    body_len_ = 0;
+    decode_status_ = HEAD;
+    if (msg_) delete msg_;
+    msg_ = nullptr;
+  }
   uint8_t *Data() { return pkt_.Data4Write(); }
   size_t Len() { return pkt_.CanWriteLen(); }
   void EnCode(const std::string &msg, Packet &pkt) {

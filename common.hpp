@@ -5,6 +5,9 @@
 #include <sys/sysinfo.h>
 
 #include <functional>
+#include <iostream>
+
+using namespace std;
 
 #include "codec.hpp"
 
@@ -36,7 +39,11 @@ bool RecvMsg(int fd, std::string &message) {
   std::string *temp = nullptr;
   while ((temp = codec.GetMessage()) == nullptr) {  // 只要还没获取到一个完整的消息，则一直循环
     ssize_t ret = read(fd, codec.Data(), codec.Len());
-    if (ret <= 0) {
+    if (0 == ret) {
+      cout << "peer close connection" << endl;
+      return false;
+    }
+    if (ret < 0) {
       if (errno == EINTR) continue;  // 中断的情况可以重试
       perror("read failed");
       return false;

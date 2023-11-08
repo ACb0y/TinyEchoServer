@@ -19,11 +19,13 @@ void usage() {
   cout << "    -pkt_size,--pkt_size           size of send packet, unit is byte" << endl;
   cout << "    -client_count,--client_count   count of client" << endl;
   cout << "    -run_time,--run_time           run time, unit is second" << endl;
+  cout << "    -debug,--debug                 debug mode, more info print" << endl;
   cout << endl;
 }
 
 void finish(void *data) {
   ClientManager *client_manager = (ClientManager *)data;
+  client_manager->GetStatData();
   client_manager->PrintStatData();
   exit(0);
 }
@@ -42,11 +44,15 @@ int main(int argc, char *argv[]) {
   int64_t pkt_size;
   int64_t client_count;
   int64_t run_time;
+  bool is_debug{false};
+  bool is_rand_req_count{false};
   CmdLine::StrOptRequired(&ip, "ip");
   CmdLine::Int64OptRequired(&port, "port");
   CmdLine::Int64OptRequired(&pkt_size, "pkt_size");
   CmdLine::Int64OptRequired(&client_count, "client_count");
   CmdLine::Int64OptRequired(&run_time, "run_time");
+  CmdLine::BoolOpt(&is_debug, "debug");
+  CmdLine::BoolOpt(&is_rand_req_count, "rand_req_count");
   CmdLine::SetUsage(usage);
   CmdLine::Parse(argc, argv);
 
@@ -58,7 +64,7 @@ int main(int argc, char *argv[]) {
   }
   Timer timer;
   std::string message(pkt_size + 1, 'a');
-  ClientManager client_manager(ip, port, epoll_fd, &timer, client_count, message, true);
+  ClientManager client_manager(ip, port, epoll_fd, &timer, client_count, message, is_rand_req_count, is_debug);
   timer.Register(finish, &client_manager, run_time * 1000);
   timer.Register(clientManagerCheck, &client_manager, 1);
   while (true) {

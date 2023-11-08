@@ -27,15 +27,44 @@ enum ClientStatus {
 
 class EchoClient {
  public:
-  EchoClient(int epoll_fd, TinyEcho::Percentile* percentile, int max_req_count = 100000)
-      : epoll_fd_(epoll_fd), percentile_(percentile), max_req_count_(max_req_count) {
+  EchoClient(int epoll_fd, TinyEcho::Percentile* percentile, bool is_debug, int max_req_count = 100000)
+      : epoll_fd_(epoll_fd), percentile_(percentile), is_debug_(is_debug), max_req_count_(max_req_count) {
     if (max_req_count_ == 0) {
       srand(time(NULL));
       max_req_count_ = (rand() % 100000) + 1000;  // 至少请求1000次
     }
+    if (is_debug_) {
+      cout << "max_req_count=" << max_req_count_ << endl;
+    }
   }
   int Fd() { return fd_; }
-  ClientStatus GetStatus() { return status_; }
+  std::string GetStatus() {
+    if (Init == status_) {
+      return "Init";
+    }
+    if (Connecting == status_) {
+      return "Connecting";
+    }
+    if (ConnectSuccess == status_) {
+      return "ConnectSuccess";
+    }
+    if (SendRequest == status_) {
+      return "SendRequest";
+    }
+    if (RecvResponse == status_) {
+      return "RecvResponse";
+    }
+    if (Success == status_) {
+      return "Success";
+    }
+    if (Failure == status_) {
+      return "Failure";
+    }
+    if (Finish == status_) {
+      return "Finish";
+    }
+    return "Unknow";
+  }
   void SetEchoMessage(const std::string& message) {
     send_message_ = message;
     codec_.EnCode(message, send_pkt_);
@@ -118,6 +147,9 @@ class EchoClient {
   }
   bool Deal() {  // 本函数实现状态机的流转
     bool result{false};
+    if (is_debug_) {
+      cout << "deal before status_ = " << GetStatus() << endl;
+    }
     if (Connecting == status_) {  // 状态转移分支 -> (ConnectSuccess, Failure)
       result = checkConnect();
     } else if (ConnectSuccess == status_) {  // 状态转移分支 -> (SendRequest, Failure)
@@ -133,6 +165,9 @@ class EchoClient {
       status_ = Failure;
       failure_count_++;
       ClearEvent(epoll_fd_, fd_);
+    }
+    if (is_debug_) {
+      cout << "deal after status_ = " << GetStatus() << endl;
     }
     return result;
   }
@@ -197,6 +232,7 @@ class EchoClient {
     last_recv_resp_time_us_ = 0;
     success_count_++;  // 统计请求成功数
     status_ = SendRequest;
+    codec_.Reset();
     percentile_->Stat(spend_time_us);
     return true;
   }
@@ -213,17 +249,18 @@ class EchoClient {
   ClientStatus status_{Init};  // 客户端状态机
   std::string send_message_;  // 发送的消息
   size_t send_len_{0};  // 完成发送的数据长度
-  TinyEcho::Packet send_pkt_;  // 发送的数据包
   TinyEcho::Codec codec_;  // 用于请求的编解码
+  TinyEcho::Packet send_pkt_;  // 发送的数据包
   int64_t last_connect_time_us_{0};  // 最近一次connect时间，单位us
   int64_t last_send_req_time_us_{0};  // 最近一次发送请求时间，单位us
   int64_t last_recv_resp_time_us_{0};  // 最近一次接受应答时间，单位us
   TinyEcho::Percentile* percentile_;
+  bool is_debug_;  // 是否调试模式
   int max_req_count_{0};  // 客户端最多执行多少次请求
   int64_t failure_count_{0};  // 失败次数
   int64_t success_count_{0};  // 成功次数
-  int64_t connect_failure_count_{0};  // 细分的失败统计，连接失败数
   int64_t read_failure_count_{0};  // 细分的失败统计，读失败数
   int64_t write_failure_count_{0};  // 细分的失败统计，写失败数
+  int64_t connect_failure_count_{0};  // 细分的失败统计，连接失败数
 };
 }  // namespace BenchMark

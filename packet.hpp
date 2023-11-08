@@ -19,6 +19,10 @@ class Packet {
     use_len_ = 0;
     parse_len_ = 0;
   }
+  void Reset() {
+    use_len_ = 0;
+    parse_len_ = 0;
+  }
   void ReAlloc(size_t len) {
     if (len < len_) return;  // 指定的缓冲区长度小于当前缓冲区的长度，则直接返回
     data_ = (uint8_t *)realloc(data_, len);
