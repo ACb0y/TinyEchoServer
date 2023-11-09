@@ -65,6 +65,7 @@ int main(int argc, char *argv[]) {
     for (int i = 0; i < num; i++) {
       Conn *conn = (Conn *)events[i].data.ptr;
       if (conn->Fd() == sock_fd) {
+        // TODO 这里是否批量的接受客户端（再做一个case）accept的越快，也就越能快速的使用cpu，也就能处理的更快。
         LoopAccept(sock_fd, 2048, [epoll_fd](int client_fd) {
           Conn *conn = new Conn(client_fd, epoll_fd, false);
           AddReadEvent(conn);  // 监听可读事件，保持fd为阻塞IO

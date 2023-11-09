@@ -27,11 +27,10 @@ enum ClientStatus {
 
 class EchoClient {
  public:
-  EchoClient(int epoll_fd, TinyEcho::Percentile* percentile, bool is_debug, int max_req_count = 100000)
+  EchoClient(int epoll_fd, TinyEcho::Percentile* percentile, bool is_debug, int max_req_count)
       : epoll_fd_(epoll_fd), percentile_(percentile), is_debug_(is_debug), max_req_count_(max_req_count) {
-    if (max_req_count_ == 0) {
-      srand(time(NULL));
-      max_req_count_ = (rand() % 100000) + 1000;  // 至少请求1000次
+    if (max_req_count_ <= 0) {
+      max_req_count_ = 100;
     }
     if (is_debug_) {
       cout << "max_req_count=" << max_req_count_ << endl;

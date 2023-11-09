@@ -1,5 +1,6 @@
 #include <iostream>
 #include <string>
+#include <thread>
 
 #include "../cmdline.h"
 #include "../epollctl.hpp"
@@ -9,13 +10,25 @@
 using namespace std;
 using namespace BenchMark;
 
+string ip;
+int64_t port;
+int64_t thread_count;
+int64_t pkt_size;
+int64_t client_count;
+int64_t run_time;
+int64_t max_req_count;
+bool is_debug;
+
 void usage() {
-  // 新增一个debug的选项
-  cout << "BenchMark -ip 0.0.0.0 -port 1688 -pkt_size 1024 -client_count 200 -run_time 60" << endl;
+  cout << "BenchMark -ip 0.0.0.0 -port 1688 -thread_count 1 -max_req_count 100000 -pkt_size 1024 -client_count 200 "
+          "-run_time 60 -debug"
+       << endl;
   cout << "options:" << endl;
   cout << "    -h,--help                      print usage" << endl;
   cout << "    -ip,--ip                       service listen ip" << endl;
   cout << "    -port,--port                   service listen port" << endl;
+  cout << "    -thread_count,--thread_count   run thread count" << endl;
+  cout << "    -max_req_count,--max_req_count one connection max req count" << endl;
   cout << "    -pkt_size,--pkt_size           size of send packet, unit is byte" << endl;
   cout << "    -client_count,--client_count   count of client" << endl;
   cout << "    -run_time,--run_time           run time, unit is second" << endl;
@@ -23,53 +36,34 @@ void usage() {
   cout << endl;
 }
 
-void finish(void *data) {
+void threadExit(void *data) {
   ClientManager *client_manager = (ClientManager *)data;
   client_manager->GetStatData();
-  client_manager->PrintStatData();
-  exit(0);
+  client_manager->SetExit();
 }
 
 void clientManagerCheck(void *data) {
   ClientManager *client_manager = (ClientManager *)data;
-  int32_t create_client_count = 0;
-  client_manager->CheckStatus(create_client_count);
+  client_manager->CheckStatus();
   // 重新注册定时器
   client_manager->GetTimer()->Register(clientManagerCheck, data, 1);
 }
 
-// TODO 改成多线程的模型
-int main(int argc, char *argv[]) {
-  string ip;
-  int64_t port;
-  int64_t pkt_size;
-  int64_t client_count;
-  int64_t run_time;
-  bool is_debug{false};
-  bool is_rand_req_count{false};
-  CmdLine::StrOptRequired(&ip, "ip");
-  CmdLine::Int64OptRequired(&port, "port");
-  CmdLine::Int64OptRequired(&pkt_size, "pkt_size");
-  CmdLine::Int64OptRequired(&client_count, "client_count");
-  CmdLine::Int64OptRequired(&run_time, "run_time");
-  CmdLine::BoolOpt(&is_debug, "debug");
-  CmdLine::BoolOpt(&is_rand_req_count, "rand_req_count");
-  CmdLine::SetUsage(usage);
-  CmdLine::Parse(argc, argv);
-
+void handler() {
   epoll_event events[2048];
   int epoll_fd = epoll_create(1);
   if (epoll_fd < 0) {
     perror("epoll_create failed");
-    return -1;
+    return;
   }
   Timer timer;
+  bool is_running = true;
   std::string message(pkt_size + 1, 'a');
-  ClientManager client_manager(ip, port, epoll_fd, &timer, client_count, message, is_rand_req_count, is_debug,
-                               run_time);
-  timer.Register(finish, &client_manager, run_time * 1000);
+  ClientManager client_manager(ip, port, epoll_fd, &timer, client_count, message, max_req_count, is_debug, run_time,
+                               &is_running);
+  timer.Register(threadExit, &client_manager, run_time * 1000);
   timer.Register(clientManagerCheck, &client_manager, 1);
-  while (true) {
+  while (is_running) {
     int64_t msec = 0;
     bool oneTimer = false;
     TimerData timer_data;
@@ -93,5 +87,29 @@ int main(int argc, char *argv[]) {
     }
     if (oneTimer) timer.Run(timer_data);  // 处理定时器
   }
+}
+
+int main(int argc, char *argv[]) {
+  CmdLine::StrOptRequired(&ip, "ip");
+  CmdLine::Int64OptRequired(&port, "port");
+  CmdLine::Int64OptRequired(&thread_count, "thread_count");
+  CmdLine::Int64OptRequired(&max_req_count, "max_req_count");
+  CmdLine::Int64OptRequired(&pkt_size, "pkt_size");
+  CmdLine::Int64OptRequired(&client_count, "client_count");
+  CmdLine::Int64OptRequired(&run_time, "run_time");
+  CmdLine::BoolOpt(&is_debug, "debug");
+  CmdLine::SetUsage(usage);
+  CmdLine::Parse(argc, argv);
+  if (thread_count > 10) {
+    thread_count = 10;
+  }
+  std::thread threads[10];
+  for (int64_t i = 0; i < thread_count; i++) {
+    threads[i] = std::thread(handler);
+  }
+  for (int64_t i = 0; i < thread_count; i++) {
+    threads[i].join();
+  }
+  ClientManager::PrintStatData(thread_count * client_count, run_time);
   return 0;
 }
