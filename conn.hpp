@@ -8,6 +8,7 @@ class Conn {
   Conn(int fd, int epoll_fd, bool is_multi_io) : fd_(fd), epoll_fd_(epoll_fd), is_multi_io_(is_multi_io) {}
   bool Read() {
     do {
+      if (codec_.GetDecodeStatus() == FINISH) return true;
       ssize_t ret = read(fd_, codec_.Data(), codec_.Len());
       if (ret == 0) {
         perror("peer close connection");

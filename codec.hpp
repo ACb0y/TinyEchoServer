@@ -28,6 +28,7 @@ class Codec {
     if (msg_) delete msg_;
     msg_ = nullptr;
   }
+  DecodeStatus GetDecodeStatus() { return decode_status_; }
   uint8_t *Data() { return pkt_.Data4Write(); }
   size_t Len() { return pkt_.CanWriteLen(); }
   void EnCode(const std::string &msg, Packet &pkt) {
