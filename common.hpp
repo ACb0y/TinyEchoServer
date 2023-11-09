@@ -51,6 +51,7 @@ bool RecvMsg(int fd, std::string &message) {
     codec.DeCode(ret);
   }
   message = *temp;
+  delete temp;
   return true;
 }
 
