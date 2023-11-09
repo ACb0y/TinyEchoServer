@@ -38,16 +38,24 @@ class Conn {
     return true;
   }
   bool OneMessage() {
+    bool get_one{false};
     std::string* temp = codec_.GetMessage();
     if (temp) {
+      get_one = true;
       message_ = *temp;
+      delete temp;
     }
-    return temp != nullptr;
+    return get_one;
   }
   void EnCode() { codec_.EnCode(message_, pkt_); }
   bool FinishWrite() { return send_len_ == pkt_.UseLen(); }
   int Fd() { return fd_; }
   int EpollFd() { return epoll_fd_; }
+  void Reset() {
+    codec_.Reset();
+    send_len_ = 0;
+    pkt_.Reset();
+  }
 
  private:
   int fd_{0};  // 关联的客户端连接fd

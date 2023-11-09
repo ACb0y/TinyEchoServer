@@ -50,6 +50,14 @@ inline void ModToWriteEvent(int epoll_fd, int fd, void *user_data) {
   assert(epoll_ctl(epoll_fd, EPOLL_CTL_MOD, fd, &event) != -1);
 }
 
+inline void ModToReadEvent(TinyEcho::Conn *conn, bool is_et = false) {
+  epoll_event event;
+  event.data.ptr = (void *)conn;
+  event.events = EPOLLIN;
+  if (is_et) event.events |= EPOLLET;
+  assert(epoll_ctl(conn->EpollFd(), EPOLL_CTL_MOD, conn->Fd(), &event) != -1);
+}
+
 inline void ModToReadEvent(int epoll_fd, int fd, void *user_data) {
   epoll_event event;
   event.data.ptr = user_data;
