@@ -10,7 +10,7 @@ namespace BenchMark {
 class ClientManager {
  public:
   ClientManager(const std::string& ip, int64_t port, int epoll_fd, Timer* timer, int count, const std::string& message,
-                bool is_rand_req_count, bool is_debug)
+                bool is_rand_req_count, bool is_debug, int64_t run_time)
       : ip_(ip),
         port_(port),
         epoll_fd_(epoll_fd),
@@ -18,7 +18,8 @@ class ClientManager {
         count_(count),
         message_(message),
         is_rand_req_count_(is_rand_req_count),
-        is_debug_(is_debug) {
+        is_debug_(is_debug),
+        run_time_(run_time) {
     clients_ = new EchoClient*[count];
     for (int i = 0; i < count; i++) {
       clients_[i] = newClient(message, is_debug);
@@ -40,11 +41,13 @@ class ClientManager {
     }
   }
   void PrintStatData() {
+    percentile_.PrintPctData();
+    cout << "--- benchmark statistics ---" << endl;
+    percentile_.PrintAvgPctData();
     cout << "success[" << success_count_ << "],failure[" << failure_count_ << "],connect_failure["
          << connect_failure_count_ << "],read_failure[" << read_failure_count_ << "],write_failure["
          << write_failure_count_ << "]" << endl;
-    percentile_.PrintPctData();
-    percentile_.PrintAvgPctData();
+    cout << "client_count[" << count_ << "],qps[" << success_count_ / run_time_ << "]" << endl;
   }
   void CheckStatus(int32_t& create_client_count) {  // 检查客户端连接状态，并模拟了客户端的随机关闭和随机创建
     for (int i = 0; i < count_; i++) {
@@ -99,6 +102,7 @@ class ClientManager {
   std::string message_;  // 要发送的消息
   bool is_rand_req_count_;  // 是否随机请求次数
   bool is_debug_;  // 是否调试模式
+  int64_t run_time_;  // 运行时间
   int64_t success_count_{0};  // 成功数统计
   int64_t failure_count_{0};  // 失败数统计
   int64_t connect_failure_count_{0};  // 细分失败类型统计，连接失败

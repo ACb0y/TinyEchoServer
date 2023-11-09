@@ -40,7 +40,7 @@ class Percentile {
     GetPercentile(0.95, pct95);
     GetPercentile(0.99, pct99);
     cout << "per " << std::to_string(stat_data_.size()) << " request stat data -> ";
-    cout << "pct50[" << pct50 << "],pct95[" << pct95 << "],pct99[" << pct99 << "]" << endl;
+    cout << "pct50[" << pct50 << "us],pct95[" << pct95 << "us],pct99[" << pct99 << "us]" << endl;
     if (stat_data_.size() >= 100000) {
       pct50_data_.push_back(pct50);
       pct95_data_.push_back(pct95);
@@ -53,7 +53,7 @@ class Percentile {
     double pct50 = std::accumulate(pct50_data_.begin(), pct50_data_.end(), 0.0) / pct50_data_.size();
     double pct95 = std::accumulate(pct95_data_.begin(), pct95_data_.end(), 0.0) / pct95_data_.size();
     double pct99 = std::accumulate(pct99_data_.begin(), pct99_data_.end(), 0.0) / pct99_data_.size();
-    cout << "pct avg data -> pct50[" << pct50 << "],pct95[" << pct95 << "],pct99[" << pct99 << "]" << endl;
+    cout << "pct avg data -> pct50[" << pct50 << "us],pct95[" << pct95 << "us],pct99[" << pct99 << "us]" << endl;
   }
 
  private:

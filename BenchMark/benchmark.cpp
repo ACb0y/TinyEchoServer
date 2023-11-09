@@ -64,7 +64,8 @@ int main(int argc, char *argv[]) {
   }
   Timer timer;
   std::string message(pkt_size + 1, 'a');
-  ClientManager client_manager(ip, port, epoll_fd, &timer, client_count, message, is_rand_req_count, is_debug);
+  ClientManager client_manager(ip, port, epoll_fd, &timer, client_count, message, is_rand_req_count, is_debug,
+                               run_time);
   timer.Register(finish, &client_manager, run_time * 1000);
   timer.Register(clientManagerCheck, &client_manager, 1);
   while (true) {
