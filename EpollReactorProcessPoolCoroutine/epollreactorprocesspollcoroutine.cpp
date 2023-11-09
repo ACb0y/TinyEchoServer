@@ -149,10 +149,8 @@ void usage() {
 int main(int argc, char *argv[]) {
   string ip;
   int64_t port;
-  bool is_dynamic_time_out{false};
   CmdLine::StrOptRequired(&ip, "ip");
   CmdLine::Int64OptRequired(&port, "port");
-  CmdLine::BoolOpt(&is_dynamic_time_out, "d");
   CmdLine::SetUsage(usage);
   CmdLine::Parse(argc, argv);
   for (int i = 0; i < GetNProcs(); i++) {
