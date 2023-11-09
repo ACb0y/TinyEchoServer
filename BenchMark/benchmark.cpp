@@ -38,6 +38,7 @@ void clientManagerCheck(void *data) {
   client_manager->GetTimer()->Register(clientManagerCheck, data, 1);
 }
 
+// TODO 改成多线程的模型
 int main(int argc, char *argv[]) {
   string ip;
   int64_t port;
