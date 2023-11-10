@@ -82,7 +82,7 @@ int main(int argc, char *argv[]) {
         }
         if (conn->FinishWrite()) {  // 完成了了请求的应答写，则可以释放连接
           conn->Reset();
-          ModToReadEvent(conn, true);  // 修改成只监控可写事件
+          ModToReadEvent(conn, true);  // 修改成只监控可读事件
         }
       }
     }

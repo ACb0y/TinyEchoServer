@@ -108,6 +108,7 @@ int main(int argc, char *argv[]) {
   for (int64_t i = 0; i < thread_count; i++) {
     threads[i].join();
   }
+  // 要实现连接耗时的统计和输出
   ClientManager::PrintStatData(thread_count * client_count, run_time);
   return 0;
 }

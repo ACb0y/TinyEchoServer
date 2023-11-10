@@ -9,47 +9,27 @@
 #include <unistd.h>
 
 #include <iostream>
+#include <thread>
 
 #include "../cmdline.h"
+#include "../conn.hpp"
 #include "../epollctl.hpp"
 
 using namespace std;
 using namespace TinyEcho;
 
-void usage() {
-  cout << "EpollReactorSingleProcess -ip 0.0.0.0 -port 1688 -multiio -la" << endl;
-  cout << "options:" << endl;
-  cout << "    -h,--help      print usage" << endl;
-  cout << "    -ip,--ip       listen ip" << endl;
-  cout << "    -port,--port   listen port" << endl;
-  cout << "    -multiio,--multiio  multi io" << endl;
-  cout << "    -la,--la       loop accept" << endl;
-  cout << endl;
-}
-
-int main(int argc, char *argv[]) {
-  string ip;
-  int64_t port;
-  bool is_multi_io;
-  bool is_loop_accept;
-  CmdLine::StrOptRequired(&ip, "ip");
-  CmdLine::Int64OptRequired(&port, "port");
-  CmdLine::BoolOpt(&is_multi_io, "multiio");
-  CmdLine::BoolOpt(&is_loop_accept, "la");
-  CmdLine::SetUsage(usage);
-  CmdLine::Parse(argc, argv);
-  cout << "is_loop_accept = " << is_loop_accept << endl;
-  int sock_fd = CreateListenSocket(ip, port, false);
+void handler(string ip, int64_t port) {
+  int sock_fd = CreateListenSocket(ip, port, true);
   if (sock_fd < 0) {
-    return -1;
+    return;
   }
   epoll_event events[2048];
   int epoll_fd = epoll_create(1);
   if (epoll_fd < 0) {
     perror("epoll_create failed");
-    return -1;
+    return;
   }
-  Conn conn(sock_fd, epoll_fd, is_multi_io);
+  Conn conn(sock_fd, epoll_fd, true);
   SetNotBlock(sock_fd);
   AddReadEvent(&conn);
   while (true) {
@@ -61,9 +41,8 @@ int main(int argc, char *argv[]) {
     for (int i = 0; i < num; i++) {
       Conn *conn = (Conn *)events[i].data.ptr;
       if (conn->Fd() == sock_fd) {
-        int max_conn = is_loop_accept ? 2048 : 1;
-        LoopAccept(sock_fd, max_conn, [epoll_fd, is_multi_io](int client_fd) {
-          Conn *conn = new Conn(client_fd, epoll_fd, is_multi_io);
+        LoopAccept(sock_fd, 2048, [epoll_fd](int client_fd) {
+          Conn *conn = new Conn(client_fd, epoll_fd, true);
           SetNotBlock(client_fd);
           AddReadEvent(conn);  // 监听可读事件
         });
@@ -95,5 +74,31 @@ int main(int argc, char *argv[]) {
       }
     }
   }
+}
+
+void usage() {
+  cout << "EpollReactorThreadPool -ip 0.0.0.0 -port 1688 -poolsize 8" << endl;
+  cout << "options:" << endl;
+  cout << "    -h,--help      print usage" << endl;
+  cout << "    -ip,--ip       listen ip" << endl;
+  cout << "    -port,--port   listen port" << endl;
+  cout << "    -poolsize,--poolsize   pool size" << endl;
+  cout << endl;
+}
+
+int main(int argc, char *argv[]) {
+  string ip;
+  int64_t port;
+  int64_t pool_size;
+  CmdLine::StrOptRequired(&ip, "ip");
+  CmdLine::Int64OptRequired(&port, "port");
+  CmdLine::Int64OptRequired(&pool_size, "poolsize");
+  CmdLine::SetUsage(usage);
+  CmdLine::Parse(argc, argv);
+  pool_size = pool_size > GetNProcs() ? GetNProcs() : pool_size;
+  for (int i = 0; i < pool_size; i++) {
+    std::thread(handler, ip, port).detach();  // 这里需要调用detach，让创建的线程独立运行
+  }
+  while (true) sleep(1);  // 主线程陷入死循环
   return 0;
 }
