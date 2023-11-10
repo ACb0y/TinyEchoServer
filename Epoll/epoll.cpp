@@ -28,19 +28,22 @@ void handlerClient(int client_fd) {
 }
 
 void usage() {
-  cout << "Epoll -ip 0.0.0.0 -port 1688" << endl;
+  cout << "Epoll -ip 0.0.0.0 -port 1688 -la" << endl;
   cout << "options:" << endl;
   cout << "    -h,--help      print usage" << endl;
   cout << "    -ip,--ip       listen ip" << endl;
   cout << "    -port,--port   listen port" << endl;
+  cout << "    -la,--la       loop accept" << endl;
   cout << endl;
 }
 
 int main(int argc, char *argv[]) {
   string ip;
   int64_t port;
+  bool loop_accept;
   CmdLine::StrOptRequired(&ip, "ip");
   CmdLine::Int64OptRequired(&port, "port");
+  CmdLine::BoolOpt(&loop_accept, "la");
   CmdLine::SetUsage(usage);
   CmdLine::Parse(argc, argv);
   int sock_fd = CreateListenSocket(ip, port, false);
@@ -65,12 +68,20 @@ int main(int argc, char *argv[]) {
     for (int i = 0; i < num; i++) {
       Conn *conn = (Conn *)events[i].data.ptr;
       if (conn->Fd() == sock_fd) {
-        // TODO 这里是否批量的接受客户端（再做一个case）accept的越快，也就越能快速的使用cpu，也就能处理的更快。
-        LoopAccept(sock_fd, 2048, [epoll_fd](int client_fd) {
-          Conn *conn = new Conn(client_fd, epoll_fd, false);
-          AddReadEvent(conn);  // 监听可读事件，保持fd为阻塞IO
-          SetTimeOut(conn->Fd(), 0, 500000);  // 设置读写超时时间为500ms
-        });
+        if (loop_accept) {
+          LoopAccept(sock_fd, 2048, [epoll_fd](int client_fd) {
+            Conn *conn = new Conn(client_fd, epoll_fd, false);
+            AddReadEvent(conn);  // 监听可读事件，保持fd为阻塞IO
+          });
+        } else {
+          int client_fd = accept(sock_fd, NULL, 0);
+          if (client_fd > 0) {
+            Conn *conn = new Conn(client_fd, epoll_fd, false);
+            AddReadEvent(conn);  // 监听可读事件，保持fd为阻塞IO
+            continue;
+          }
+          perror("accept failed");
+        }
         continue;
       }
       handlerClient(conn->Fd());

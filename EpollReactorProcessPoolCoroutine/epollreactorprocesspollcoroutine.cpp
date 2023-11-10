@@ -137,23 +137,26 @@ int handler(string ip, int64_t port) {
 }
 
 void usage() {
-  cout << "EpollReactorProcessPoolCoroutine -ip 0.0.0.0 -port 1688" << endl;
+  cout << "EpollReactorProcessPoolCoroutine -ip 0.0.0.0 -port 1688 -poolsize 8" < endl;
   cout << "options:" << endl;
   cout << "    -h,--help      print usage" << endl;
   cout << "    -ip,--ip       listen ip" << endl;
   cout << "    -port,--port   listen port" << endl;
+  cout << "    -poolsize,--poolsize   pool size" << endl;
   cout << endl;
 }
 
-// TODO 支持指定并发进程数
 int main(int argc, char *argv[]) {
   string ip;
   int64_t port;
+  int64_t pool_size;
   CmdLine::StrOptRequired(&ip, "ip");
   CmdLine::Int64OptRequired(&port, "port");
+  CmdLine::Int64OptRequired(&pool_size, "poolsize");
   CmdLine::SetUsage(usage);
   CmdLine::Parse(argc, argv);
-  for (int i = 0; i < GetNProcs(); i++) {
+  pool_size = pool_size > GetNProcs() ? GetNProcs() : pool_size;
+  for (int i = 0; i < pool_size; i++) {
     pid_t pid = fork();
     if (pid < 0) {
       perror("fork failed");

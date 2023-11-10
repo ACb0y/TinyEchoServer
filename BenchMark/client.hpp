@@ -184,7 +184,9 @@ class EchoClient {
     return 0 == err;
   }
   bool sendRequest() {
-    last_send_req_time_us_ = GetCurrentTimeUs();
+    if (0 == last_send_req_time_us_) {
+      last_send_req_time_us_ = GetCurrentTimeUs();
+    }
     ssize_t ret = write(fd_, send_pkt_.Data() + send_len_, send_pkt_.UseLen() - send_len_);
     if (ret < 0) {
       if (EINTR == errno || EAGAIN == errno || EWOULDBLOCK == errno) return true;
@@ -198,9 +200,10 @@ class EchoClient {
     }
     return true;
   }
+
   bool recvResponse() {
-    last_recv_resp_time_us_ = GetCurrentTimeUs();
     ssize_t ret = read(fd_, codec_.Data(), codec_.Len());
+    last_recv_resp_time_us_ = GetCurrentTimeUs();
     if (ret == 0) {  // 对端关闭连接
       status_ = Finish;
       ClearEvent(epoll_fd_, fd_);
