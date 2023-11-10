@@ -69,7 +69,8 @@ class EchoClient {
     codec_.EnCode(message, send_pkt_);
   }
   void GetDealStat(int64_t& success_count, int64_t& failure_count, int64_t& connect_failure_count,
-                   int64_t& read_failure_count, int64_t& write_failure_count) {
+                   int64_t& read_failure_count, int64_t& write_failure_count, int64_t& try_connect_count) {
+    try_connect_count += try_connect_count_;
     success_count += success_count_;
     failure_count += failure_count_;
     connect_failure_count += connect_failure_count_;
@@ -81,25 +82,25 @@ class EchoClient {
       return false;
     }
     bool is_valid = true;
-    // connect超时
+    // connect超时，超时时间50ms
     if (Connecting == status_) {
-      if ((GetCurrentTimeUs() - last_connect_time_us_) / 1000 >= 2000) {
+      if ((GetCurrentTimeUs() - last_connect_time_us_) / 1000 >= 50) {
         is_valid = false;
         failure_count_++;
         connect_failure_count_++;
       }
     }
-    // 写超时
+    // 写超时，超时时间500ms
     if (SendRequest == status_) {
-      if (last_send_req_time_us_ != 0 && (GetCurrentTimeUs() - last_send_req_time_us_) / 1000 >= 2000) {
+      if (last_send_req_time_us_ != 0 && (GetCurrentTimeUs() - last_send_req_time_us_) / 1000 >= 500) {
         is_valid = false;
         failure_count_++;
         write_failure_count_++;
       }
     }
-    // 读超时
+    // 读超时，超时时间500ms
     if (RecvResponse == status_) {
-      if (last_recv_resp_time_us_ != 0 && (GetCurrentTimeUs() - last_recv_resp_time_us_) / 1000 >= 2000) {
+      if (last_recv_resp_time_us_ != 0 && (GetCurrentTimeUs() - last_recv_resp_time_us_) / 1000 >= 500) {
         is_valid = false;
         failure_count_++;
         read_failure_count_++;
@@ -115,6 +116,7 @@ class EchoClient {
     return is_valid;
   }
   void Connect(const std::string& ip, int64_t port) {
+    try_connect_count_++;
     fd_ = socket(AF_INET, SOCK_STREAM, 0);
     if (fd_ < 0) {
       status_ = Failure;
@@ -264,5 +266,6 @@ class EchoClient {
   int64_t read_failure_count_{0};  // 细分的失败统计，读失败数
   int64_t write_failure_count_{0};  // 细分的失败统计，写失败数
   int64_t connect_failure_count_{0};  // 细分的失败统计，连接失败数
+  int64_t try_connect_count_{0};  // 尝试连接的次数
 };
 }  // namespace BenchMark

@@ -100,9 +100,7 @@ int main(int argc, char *argv[]) {
   CmdLine::BoolOpt(&is_debug, "debug");
   CmdLine::SetUsage(usage);
   CmdLine::Parse(argc, argv);
-  if (thread_count > 10) {
-    thread_count = 10;
-  }
+  thread_count = thread_count > 10 ? 10 : thread_count;
   std::thread threads[10];
   for (int64_t i = 0; i < thread_count; i++) {
     threads[i] = std::thread(handler);

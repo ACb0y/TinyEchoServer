@@ -18,7 +18,6 @@ class Percentile {
       printData();
     }
   }
-  size_t GetStatDataCount() { return stat_data_.size(); }
   bool GetPercentile(double pct, double &pctValue) {
     double x = (stat_data_.size() - 1) * pct;
     int32_t i = (int32_t)x;
