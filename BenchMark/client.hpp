@@ -82,25 +82,25 @@ class EchoClient {
       return false;
     }
     bool is_valid = true;
-    // connect超时，超时时间50ms
+    // connect超时，超时时间20ms
     if (Connecting == status_) {
-      if ((GetCurrentTimeUs() - last_connect_time_us_) / 1000 >= 50) {
+      if ((GetCurrentTimeUs() - last_connect_time_us_) / 1000 >= 20) {
         is_valid = false;
         failure_count_++;
         connect_failure_count_++;
       }
     }
-    // 写超时，超时时间500ms
+    // 写超时，超时时间100ms
     if (SendRequest == status_) {
-      if (last_send_req_time_us_ != 0 && (GetCurrentTimeUs() - last_send_req_time_us_) / 1000 >= 500) {
+      if (last_send_req_time_us_ != 0 && (GetCurrentTimeUs() - last_send_req_time_us_) / 1000 >= 100) {
         is_valid = false;
         failure_count_++;
         write_failure_count_++;
       }
     }
-    // 读超时，超时时间500ms
+    // 读超时，超时时间100ms
     if (RecvResponse == status_) {
-      if (last_recv_resp_time_us_ != 0 && (GetCurrentTimeUs() - last_recv_resp_time_us_) / 1000 >= 500) {
+      if (last_recv_resp_time_us_ != 0 && (GetCurrentTimeUs() - last_recv_resp_time_us_) / 1000 >= 100) {
         is_valid = false;
         failure_count_++;
         read_failure_count_++;
@@ -133,6 +133,9 @@ class EchoClient {
     if (0 == ret) {
       status_ = ConnectSuccess;
       AddWriteEvent(epoll_fd_, fd_, this);  // 监控可写事件
+      if (is_debug_) {
+        cout << "connect success" << endl;
+      }
       return;
     }
     if (errno == EINPROGRESS) {
@@ -174,12 +177,25 @@ class EchoClient {
   }
 
  private:
+  void setLinger() {
+    struct linger lin;
+    lin.l_onoff = 1;
+    lin.l_linger = 0;
+    // 设置调用close关闭tcp连接时，直接发送RST包，tcp连接直接复位，进入到closed状态。
+    assert(0 == setsockopt(fd_, SOL_SOCKET, SO_LINGER, &lin, sizeof(lin)));
+  }
   bool checkConnect() {
     int err = 0;
     socklen_t errLen = sizeof(err);
     assert(0 == getsockopt(fd_, SOL_SOCKET, SO_ERROR, &err, &errLen));
     if (0 == err) {
+      setLinger();
       status_ = ConnectSuccess;
+      int64_t connect_spend_time = GetCurrentTimeUs() - last_connect_time_us_;
+      percentile_->ConnectSpendTimeStat(connect_spend_time);
+      if (is_debug_) {
+        cout << "connect success. connect_spend_time=" << connect_spend_time << endl;
+      }
     } else {
       connect_failure_count_++;
     }
@@ -237,7 +253,7 @@ class EchoClient {
     success_count_++;  // 统计请求成功数
     status_ = SendRequest;
     codec_.Reset();
-    percentile_->Stat(spend_time_us);
+    percentile_->InterfaceSpendTimeStat(spend_time_us);
     return true;
   }
 

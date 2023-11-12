@@ -46,7 +46,7 @@ class ClientManager {
   // 实现连接操作的耗时统计
   static void PrintStatData(int64_t client_count, int64_t run_time) {
     cout << "--- benchmark statistics ---" << endl;
-    TinyEcho::Percentile::PrintAvgData();
+    TinyEcho::Percentile::PrintPctAvgData();
     cout << "success[" << success_count_ << "],failure[" << failure_count_ << "],try_connect[" << try_connect_count_
          << "],connect_failure[" << connect_failure_count_ << "],read_failure[" << read_failure_count_
          << "],write_failure[" << write_failure_count_ << "]" << endl;

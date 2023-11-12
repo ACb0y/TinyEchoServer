@@ -89,7 +89,6 @@ void handler() {
   }
 }
 
-// TODO 实现connect耗时的统计和输出
 int main(int argc, char *argv[]) {
   CmdLine::StrOptRequired(&ip, "ip");
   CmdLine::Int64OptRequired(&port, "port");

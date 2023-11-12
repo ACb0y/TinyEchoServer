@@ -11,10 +11,14 @@ using namespace TinyEcho;
 
 void handlerClient(int client_fd) {
   string msg;
-  if (not RecvMsg(client_fd, msg)) {
-    return;
+  while (true) {
+    if (not RecvMsg(client_fd, msg)) {
+      return;
+    }
+    if (not SendMsg(client_fd, msg)) {
+      return;
+    }
   }
-  SendMsg(client_fd, msg);
   close(client_fd);
 }
 
@@ -45,7 +49,6 @@ int main(int argc, char* argv[]) {
       continue;
     }
     handlerClient(client_fd);
-    close(client_fd);
   }
   return 0;
 }
