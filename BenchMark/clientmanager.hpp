@@ -51,8 +51,8 @@ class ClientManager {
          << "],connect_failure[" << connect_failure_count_ << "],read_failure[" << read_failure_count_
          << "],write_failure[" << write_failure_count_ << "]" << endl;
     cout << "client_count[" << client_count << "],success_qps[" << success_count_ / run_time << "]" << endl;
-    cout << "request_failure_rate[" << (double)failure_count_ * 100 / success_count_ << "%],connect_failure_rate["
-         << (double)connect_failure_count_ * 100 / try_connect_count_ << "%]" << endl;
+    cout << "request_failure_rate[" << (double)failure_count_ * 100 / (success_count_ + failure_count_)
+         << "%],connect_failure_rate[" << (double)connect_failure_count_ * 100 / try_connect_count_ << "%]" << endl;
   }
 
   void CheckStatus() {  // 检查客户端连接状态，并模拟了客户端的随机关闭和随机创建
