@@ -96,20 +96,16 @@ class EchoClient {
       }
     }
     // 写超时，超时时间100ms
-    if (SendRequest == status_) {
-      if (last_send_req_time_us_ != 0 && (GetCurrentTimeUs() - last_send_req_time_us_) / 1000 >= 100) {
-        is_valid = false;
-        failure_count_++;
-        write_failure_count_++;
-      }
+    if (SendRequest == status_ && (GetCurrentTimeUs() - last_send_req_time_us_) / 1000 >= 100) {
+      is_valid = false;
+      failure_count_++;
+      write_failure_count_++;
     }
     // 读超时，超时时间100ms
-    if (RecvResponse == status_) {
-      if (last_recv_resp_time_us_ != 0 && (GetCurrentTimeUs() - last_recv_resp_time_us_) / 1000 >= 100) {
-        is_valid = false;
-        failure_count_++;
-        read_failure_count_++;
-      }
+    if (RecvResponse == status_ && (GetCurrentTimeUs() - last_recv_resp_time_us_) / 1000 >= 100) {
+      is_valid = false;
+      failure_count_++;
+      read_failure_count_++;
     }
     // 完成的请求数，已经达到最大设置的数
     if (success_count_ > max_req_count_) {
