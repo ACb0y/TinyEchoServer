@@ -11,7 +11,7 @@ namespace BenchMark {
 class ClientManager {
  public:
   ClientManager(const std::string& ip, int64_t port, int epoll_fd, Timer* timer, int count, const std::string& message,
-                int64_t max_req_count, bool is_debug, int64_t run_time, bool* is_running)
+                int64_t max_req_count, bool is_debug, int64_t run_time, bool* is_running, int64_t rate_limit)
       : ip_(ip),
         port_(port),
         epoll_fd_(epoll_fd),
@@ -21,10 +21,12 @@ class ClientManager {
         max_req_count_(max_req_count),
         is_debug_(is_debug),
         run_time_(run_time),
-        is_running_(is_running) {
+        is_running_(is_running),
+        rate_limit_(rate_limit) {
+    temp_rate_limit_ = rate_limit_;
     clients_ = new EchoClient*[count];
     for (int i = 0; i < count; i++) {
-      clients_[i] = newClient(message, is_debug, max_req_count);
+      clients_[i] = newClient(message, is_debug, max_req_count, &temp_rate_limit_);
       clients_[i]->Connect(ip_, port_);
     }
   }
@@ -55,22 +57,24 @@ class ClientManager {
          << "%],connect_failure_rate[" << (double)connect_failure_count_ * 100 / try_connect_count_ << "%]" << endl;
   }
 
-  void CheckStatus() {  // 检查客户端连接状态，并模拟了客户端的随机关闭和随机创建
+  void CheckStatus() {  // 检查客户端连接状态，连接失效的会重新建立连接
     int32_t create_client_count = 0;
     for (int i = 0; i < count_; i++) {
       if (clients_[i]->IsValid()) {
+        clients_[i]->TryRestart();
         continue;
       }
       getDealStat(clients_[i]);
       delete clients_[i];
       create_client_count++;
-      clients_[i] = newClient(message_, is_debug_, max_req_count_);
+      clients_[i] = newClient(message_, is_debug_, max_req_count_, &temp_rate_limit_);
       clients_[i]->Connect(ip_, port_);
     }
     if (is_debug_) {
       cout << "create_client_count=" << create_client_count << endl;
     }
   }
+  void RateLimitRefresh() { temp_rate_limit_ = rate_limit_; }
 
  private:
   void getDealStat(EchoClient* client) {
@@ -95,9 +99,9 @@ class ClientManager {
       try_connect_count_ += try_connect_count;
     }
   }
-  EchoClient* newClient(const std::string& message, bool is_debug, int64_t max_req_count) {
+  EchoClient* newClient(const std::string& message, bool is_debug, int64_t max_req_count, int64_t* temp_rate_limit) {
     EchoClient* client = nullptr;
-    client = new EchoClient(epoll_fd_, &percentile_, is_debug, max_req_count);
+    client = new EchoClient(epoll_fd_, &percentile_, is_debug, max_req_count, temp_rate_limit);
     client->SetEchoMessage(message);
     return client;
   }
@@ -115,6 +119,8 @@ class ClientManager {
   int64_t run_time_;  // 运行时间
   TinyEcho::Percentile percentile_;  // 用于统计请求耗时的pctxx数值
   bool* is_running_;  // 是否运行中
+  int64_t rate_limit_;  // 请求限流
+  int64_t temp_rate_limit_;  // 请求限流临时变量
   static std::mutex mutex_;  // 统计使用的互斥量
   static int64_t success_count_;  // 成功数统计
   static int64_t failure_count_;  // 失败数统计

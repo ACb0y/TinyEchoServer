@@ -17,11 +17,12 @@ int64_t pkt_size;
 int64_t client_count;
 int64_t run_time;
 int64_t max_req_count;
+int64_t rate_limit;
 bool is_debug;
 
 void usage() {
   cout << "BenchMark -ip 0.0.0.0 -port 1688 -thread_count 1 -max_req_count 100000 -pkt_size 1024 -client_count 200 "
-          "-run_time 60 -debug"
+          "-run_time 60 -rate_limit 10000 -debug"
        << endl;
   cout << "options:" << endl;
   cout << "    -h,--help                      print usage" << endl;
@@ -32,6 +33,7 @@ void usage() {
   cout << "    -pkt_size,--pkt_size           size of send packet, unit is byte" << endl;
   cout << "    -client_count,--client_count   count of client" << endl;
   cout << "    -run_time,--run_time           run time, unit is second" << endl;
+  cout << "    -rate_limit,--rate_limit       rate limit, unit is qps/second" << endl;
   cout << "    -debug,--debug                 debug mode, more info print" << endl;
   cout << endl;
 }
@@ -49,6 +51,13 @@ void clientManagerCheck(void *data) {
   client_manager->GetTimer()->Register(clientManagerCheck, data, 1);
 }
 
+void rateLimitRefresh(void *data) {
+  ClientManager *client_manager = (ClientManager *)data;
+  client_manager->RateLimitRefresh();
+  // 重新注册定时器
+  client_manager->GetTimer()->Register(rateLimitRefresh, data, 1000);
+}
+
 void handler() {
   epoll_event events[2048];
   int epoll_fd = epoll_create(1);
@@ -60,9 +69,10 @@ void handler() {
   bool is_running = true;
   std::string message(pkt_size + 1, 'a');
   ClientManager client_manager(ip, port, epoll_fd, &timer, client_count, message, max_req_count, is_debug, run_time,
-                               &is_running);
+                               &is_running, rate_limit);
   timer.Register(threadExit, &client_manager, run_time * 1000);
   timer.Register(clientManagerCheck, &client_manager, 1);
+  timer.Register(rateLimitRefresh, &client_manager, 1000);  // 每秒刷新一下限流值
   while (is_running) {
     int64_t msec = 0;
     bool oneTimer = false;
@@ -97,6 +107,7 @@ int main(int argc, char *argv[]) {
   CmdLine::Int64OptRequired(&pkt_size, "pkt_size");
   CmdLine::Int64OptRequired(&client_count, "client_count");
   CmdLine::Int64OptRequired(&run_time, "run_time");
+  CmdLine::Int64OptRequired(&rate_limit, "rate_limit");
   CmdLine::BoolOpt(&is_debug, "debug");
   CmdLine::SetUsage(usage);
   CmdLine::Parse(argc, argv);

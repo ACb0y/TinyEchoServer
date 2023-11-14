@@ -23,12 +23,17 @@ enum ClientStatus {
   Success = 6,  // 成功处理完一次请求
   Failure = 7,  // 失败（每个状态都可能跳转到这个状态）
   Finish = 8,  // 客户端read返回了0
+  Stop = 9,  // 因为限频而停止发送请求
 };
 
 class EchoClient {
  public:
-  EchoClient(int epoll_fd, TinyEcho::Percentile* percentile, bool is_debug, int max_req_count)
-      : epoll_fd_(epoll_fd), percentile_(percentile), is_debug_(is_debug), max_req_count_(max_req_count) {
+  EchoClient(int epoll_fd, TinyEcho::Percentile* percentile, bool is_debug, int max_req_count, int64_t* temp_rate_limit)
+      : epoll_fd_(epoll_fd),
+        percentile_(percentile),
+        is_debug_(is_debug),
+        max_req_count_(max_req_count),
+        temp_rate_limit_(temp_rate_limit) {
     if (max_req_count_ <= 0) {
       max_req_count_ = 100;
     }
@@ -115,6 +120,17 @@ class EchoClient {
     }
     return is_valid;
   }
+  void TryRestart() {
+    if (status_ != Stop) {
+      return;
+    }
+    if (*temp_rate_limit_ <= 0) {
+      return;
+    }
+    status_ = SendRequest;
+    last_send_req_time_us_ = GetCurrentTimeUs();
+    AddWriteEvent(epoll_fd_, fd_, this);
+  }
   void Connect(const std::string& ip, int64_t port) {
     try_connect_count_++;
     fd_ = socket(AF_INET, SOCK_STREAM, 0);
@@ -156,9 +172,9 @@ class EchoClient {
     }
     if (Connecting == status_) {  // 状态转移分支 -> (ConnectSuccess, Failure)
       result = checkConnect();
-    } else if (ConnectSuccess == status_) {  // 状态转移分支 -> (SendRequest, Failure)
+    } else if (ConnectSuccess == status_) {  // 状态转移分支 -> (SendRequest, RecvResponse, Stop, Failure)
       result = sendRequest();
-    } else if (SendRequest == status_) {  // 状态转移分支 -> (SendRequest, RecvResponse, Failure)
+    } else if (SendRequest == status_) {  // 状态转移分支 -> (SendRequest, RecvResponse, Stop, Failure)
       result = sendRequest();
     } else if (RecvResponse == status_) {  // 状态转移分支 -> (RecvResponse, Success, Failure)
       result = recvResponse();
@@ -202,9 +218,14 @@ class EchoClient {
     return 0 == err;
   }
   bool sendRequest() {
-    if (0 == last_send_req_time_us_) {
-      last_send_req_time_us_ = GetCurrentTimeUs();
+    if (*temp_rate_limit_ <= 0) {
+      status_ = Stop;
+      ClearEvent(epoll_fd_, fd_, false);
+      return true;
     }
+    (*temp_rate_limit_)--;
+    status_ = SendRequest;
+    last_send_req_time_us_ = GetCurrentTimeUs();
     ssize_t ret = write(fd_, send_pkt_.Data() + send_len_, send_pkt_.UseLen() - send_len_);
     if (ret < 0) {
       if (EINTR == errno || EAGAIN == errno || EWOULDBLOCK == errno) return true;
@@ -215,6 +236,7 @@ class EchoClient {
     if (send_len_ == send_pkt_.UseLen()) {
       status_ = RecvResponse;
       ModToReadEvent(epoll_fd_, fd_, this);
+      last_recv_resp_time_us_ = GetCurrentTimeUs();
     }
     return true;
   }
@@ -252,6 +274,7 @@ class EchoClient {
     last_recv_resp_time_us_ = 0;
     success_count_++;  // 统计请求成功数
     status_ = SendRequest;
+    last_send_req_time_us_ = GetCurrentTimeUs();
     codec_.Reset();
     percentile_->InterfaceSpendTimeStat(spend_time_us);
     return true;
@@ -277,6 +300,7 @@ class EchoClient {
   TinyEcho::Percentile* percentile_;
   bool is_debug_;  // 是否调试模式
   int max_req_count_{0};  // 客户端最多执行多少次请求
+  int64_t* temp_rate_limit_{nullptr};  // 请求限频临时变量
   int64_t failure_count_{0};  // 失败次数
   int64_t success_count_{0};  // 成功次数
   int64_t read_failure_count_{0};  // 细分的失败统计，读失败数
