@@ -66,7 +66,7 @@ class Percentile {
     {
       std::lock_guard<std::mutex> guard(mutex_);  // 对终端的输出和统计pctxx数据都是临界区
       cout << "per " << std::to_string(interface_spend_time_stat_data_.size()) << " req stat data -> ";
-      cout << "interface[pct50=" << interface_pct50 << "us,pct95=" << interface_pct95 << "us,pct99[" << interface_pct99
+      cout << "interface[pct50=" << interface_pct50 << "us,pct95=" << interface_pct95 << "us,pct99=" << interface_pct99
            << "us]";
       if (getConnectPctValue(0.50, connect_pct50) && getConnectPctValue(0.95, connect_pct95) &&
           getConnectPctValue(0.99, connect_pct99)) {
