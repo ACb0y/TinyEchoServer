@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdlib.h>
+#include <sys/time.h>
 #include <time.h>
 
 #include <iostream>
@@ -22,7 +23,7 @@ enum ClientStatus {
   RecvResponse = 5,  // 接收应答
   Success = 6,  // 成功处理完一次请求
   Failure = 7,  // 失败（每个状态都可能跳转到这个状态）
-  Finish = 8,  // 客户端read返回了0
+  Finish = 8,  // 客户端read返回了0，或者执行完了指定次数的请求
   Stop = 9,  // 因为限频而停止发送请求
 };
 
@@ -107,10 +108,6 @@ class EchoClient {
       failure_count_++;
       read_failure_count_++;
     }
-    // 完成的请求数，已经达到最大设置的数
-    if (success_count_ > max_req_count_) {
-      is_valid = false;
-    }
     if (not is_valid) {
       ClearEvent(epoll_fd_, fd_);
     }
@@ -172,9 +169,9 @@ class EchoClient {
       result = sendRequest();
     } else if (SendRequest == status_) {  // 状态转移分支 -> (SendRequest, RecvResponse, Stop, Failure)
       result = sendRequest();
-    } else if (RecvResponse == status_) {  // 状态转移分支 -> (RecvResponse, Success, Failure)
+    } else if (RecvResponse == status_) {  // 状态转移分支 -> (RecvResponse, Finish, Success, Failure)
       result = recvResponse();
-    } else if (Success == status_) {  // 状态转移分支 -> (SendRequest, Failure)
+    } else if (Success == status_) {  // 状态转移分支 -> (SendRequest, Finish, Failure)
       result = dealSuccess();
     }
     if (not result) {
@@ -273,6 +270,11 @@ class EchoClient {
     last_send_req_time_us_ = GetCurrentTimeUs();
     codec_.Reset();
     percentile_->InterfaceSpendTimeStat(spend_time_us);
+    // 完成的请求数，已经达到最大设置的数
+    if (success_count_ > max_req_count_) {
+      status_ = Finish;
+      ClearEvent(epoll_fd_, fd_);
+    }
     return true;
   }
 

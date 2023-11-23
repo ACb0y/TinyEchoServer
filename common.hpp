@@ -13,10 +13,10 @@ using namespace std;
 
 namespace TinyEcho {
 // 获取系统有多少个可用的cpu
-int GetNProcs() { return get_nprocs(); }
+inline int GetNProcs() { return get_nprocs(); }
 
 // 用于阻塞IO模式下发送应答消息
-bool SendMsg(int fd, const std::string message) {
+inline bool SendMsg(int fd, const std::string message) {
   Packet pkt;
   Codec codec;
   codec.EnCode(message, pkt);
@@ -34,7 +34,7 @@ bool SendMsg(int fd, const std::string message) {
 }
 
 // 用于阻塞IO模式下接收请求消息
-bool RecvMsg(int fd, std::string &message) {
+inline bool RecvMsg(int fd, std::string &message) {
   Codec codec;
   std::string *temp = nullptr;
   while ((temp = codec.GetMessage()) == nullptr) {  // 只要还没获取到一个完整的消息，则一直循环
@@ -55,13 +55,13 @@ bool RecvMsg(int fd, std::string &message) {
   return true;
 }
 
-void SetNotBlock(int fd) {
+inline void SetNotBlock(int fd) {
   int oldOpt = fcntl(fd, F_GETFL);
   assert(oldOpt != -1);
   assert(fcntl(fd, F_SETFL, oldOpt | O_NONBLOCK) != -1);
 }
 
-void SetTimeOut(int fd, int64_t sec, int64_t usec) {
+inline void SetTimeOut(int fd, int64_t sec, int64_t usec) {
   struct timeval tv;
   tv.tv_sec = sec;  //秒
   tv.tv_usec = usec;  //微秒，1秒等于10的6次方微秒
@@ -69,7 +69,7 @@ void SetTimeOut(int fd, int64_t sec, int64_t usec) {
   assert(setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv)) != -1);
 }
 
-int CreateListenSocket(std::string ip, int port, bool reuse_port) {
+inline int CreateListenSocket(std::string ip, int port, bool reuse_port) {
   sockaddr_in addr;
   addr.sin_family = AF_INET;
   addr.sin_port = htons(port);
@@ -98,7 +98,7 @@ int CreateListenSocket(std::string ip, int port, bool reuse_port) {
 }
 
 // 调用本函数之前需要把sock_fd设置成非阻塞的
-void LoopAccept(int sock_fd, int max_conn, std::function<void(int clientFd)> client_accept_call_back) {
+inline void LoopAccept(int sock_fd, int max_conn, std::function<void(int clientFd)> client_accept_call_back) {
   while (max_conn--) {
     int client_fd = accept(sock_fd, NULL, 0);
     if (client_fd > 0) {

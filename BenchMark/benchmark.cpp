@@ -46,7 +46,7 @@ void threadExit(void *data) {
 
 void clientManagerCheck(void *data) {
   ClientManager *client_manager = (ClientManager *)data;
-  client_manager->CheckStatus();
+  client_manager->CheckClientStatusAndDeal();
   // 重新注册定时器
   client_manager->GetTimer()->Register(clientManagerCheck, data, 1);
 }

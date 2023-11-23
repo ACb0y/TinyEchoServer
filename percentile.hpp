@@ -71,7 +71,7 @@ class Percentile {
       if (getConnectPctValue(0.50, connect_pct50) && getConnectPctValue(0.95, connect_pct95) &&
           getConnectPctValue(0.99, connect_pct99)) {
         cout << ",connect[pct50=" << connect_pct50 << "us,pct95=" << connect_pct95 << "us,pct99=" << connect_pct99
-             << "]" << endl;
+             << "us]" << endl;
       } else {
         cout << endl;
       }

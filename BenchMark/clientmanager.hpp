@@ -57,11 +57,11 @@ class ClientManager {
          << "%],connect_failure_rate[" << (double)connect_failure_count_ * 100 / try_connect_count_ << "%]" << endl;
   }
 
-  void CheckStatus() {  // 检查客户端连接状态，连接失效的会重新建立连接
+  void CheckClientStatusAndDeal() {  // 检查客户端连接状态，连接失效的会重新建立连接
     int32_t create_client_count = 0;
     for (int i = 0; i < count_; i++) {
       if (clients_[i]->IsValid()) {
-        clients_[i]->TryRestart();
+        clients_[i]->TryRestart();  // 尝试重启请求
         continue;
       }
       getDealStat(clients_[i]);
