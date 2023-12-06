@@ -70,7 +70,7 @@ inline void ClearEvent(TinyEcho::Conn *conn, bool is_close = true) {
   if (is_close) close(conn->Fd());  // close操作需要EPOLL_CTL_DEL之后调用，否则调用epoll_ctl()删除fd会失败
 }
 
-inline void ClearEvent(int epoll_fd, int fd, bool is_close = true) {
+void ClearEvent(int epoll_fd, int fd, bool is_close = true) {
   assert(epoll_ctl(epoll_fd, EPOLL_CTL_DEL, fd, NULL) != -1);
   if (is_close) close(fd);  // close操作需要EPOLL_CTL_DEL之后调用，否则调用epoll_ctl()删除fd会失败
 }

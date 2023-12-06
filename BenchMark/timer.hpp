@@ -8,6 +8,7 @@
 #include <queue>
 #include <unordered_set>
 
+namespace BenchMark {
 typedef void (*TimerCallBack)(void* data);
 typedef struct TimerData {
   friend bool operator<(const TimerData& left, const TimerData& right) {
@@ -85,3 +86,4 @@ class Timer {
   std::unordered_set<uint64_t> cancel_ids_;
   std::priority_queue<TimerData> timers_;
 };
+}  // namespace BenchMark

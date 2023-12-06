@@ -4,8 +4,9 @@
 
 #include "../cmdline.h"
 #include "../epollctl.hpp"
-#include "../timer.h"
 #include "clientmanager.hpp"
+#include "stat.hpp"
+#include "timer.hpp"
 
 using namespace std;
 using namespace BenchMark;
@@ -58,7 +59,7 @@ void rateLimitRefresh(void *data) {
   client_manager->GetTimer()->Register(rateLimitRefresh, data, 1000);
 }
 
-void handler() {
+void handler(SumStat *sum_stat) {
   epoll_event events[2048];
   int epoll_fd = epoll_create(1);
   if (epoll_fd < 0) {
@@ -68,8 +69,8 @@ void handler() {
   Timer timer;
   bool is_running = true;
   std::string message(pkt_size + 1, 'a');
-  ClientManager client_manager(ip, port, epoll_fd, &timer, client_count, message, max_req_count, is_debug, run_time,
-                               &is_running, rate_limit);
+  ClientManager client_manager(ip, port, epoll_fd, &timer, client_count, message, max_req_count, is_debug, &is_running,
+                               rate_limit, sum_stat);
   timer.Register(threadExit, &client_manager, run_time * 1000);
   timer.Register(clientManagerCheck, &client_manager, 1);
   timer.Register(rateLimitRefresh, &client_manager, 1000);  // 每秒刷新一下限流值
@@ -99,6 +100,12 @@ void handler() {
   }
 }
 
+void printStatData(SumStat &sum_stat) {
+  cout << "--- benchmark statistics ---" << endl;
+  TinyEcho::Percentile::PrintPctAvgData();
+  sum_stat.PrintStatData(client_count, run_time);
+}
+
 int main(int argc, char *argv[]) {
   CmdLine::StrOptRequired(&ip, "ip");
   CmdLine::Int64OptRequired(&port, "port");
@@ -113,13 +120,13 @@ int main(int argc, char *argv[]) {
   CmdLine::Parse(argc, argv);
   thread_count = thread_count > 10 ? 10 : thread_count;
   std::thread threads[10];
+  SumStat sum_stat;
   for (int64_t i = 0; i < thread_count; i++) {
-    threads[i] = std::thread(handler);
+    threads[i] = std::thread(handler, &sum_stat);
   }
   for (int64_t i = 0; i < thread_count; i++) {
     threads[i].join();
   }
-  // 要实现连接耗时的统计和输出
-  ClientManager::PrintStatData(thread_count * client_count, run_time);
+  printStatData(sum_stat);
   return 0;
 }
