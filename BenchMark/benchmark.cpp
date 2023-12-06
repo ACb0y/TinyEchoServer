@@ -62,7 +62,7 @@ void rateLimitRefresh(void *data) {
   client_manager->GetTimer()->Register(rateLimitRefresh, data, 1000);
 }
 
-void handler(SumStat *sum_stat) {
+void handler(SumStat *sum_stat, PctStat *pct_stat) {
   epoll_event events[2048];
   int epoll_fd = epoll_create(1);
   if (epoll_fd < 0) {
@@ -73,7 +73,7 @@ void handler(SumStat *sum_stat) {
   bool is_running = true;
   std::string message(pkt_size + 1, 'a');
   ClientManager client_manager(ip, port, epoll_fd, &timer, client_count, message, max_req_count, is_debug, &is_running,
-                               rate_limit, sum_stat);
+                               rate_limit, sum_stat, pct_stat);
   timer.Register(threadExit, &client_manager, run_time * 1000);
   timer.Register(clientManagerCheck, &client_manager, 1);
   timer.Register(rateLimitRefresh, &client_manager, 1000);  // 每秒刷新一下限流值
@@ -103,9 +103,9 @@ void handler(SumStat *sum_stat) {
   }
 }
 
-void printStatData(SumStat &sum_stat) {
+void printStatData(SumStat &sum_stat, PctStat &pct_stat) {
   cout << kGreenBegin << "--- benchmark statistics ---" << kColorEnd << endl;
-  TinyEcho::Percentile::PrintPctAvgData();
+  pct_stat.PrintPctAvgData();
   sum_stat.PrintStatData(client_count, run_time);
 }
 
@@ -124,12 +124,13 @@ int main(int argc, char *argv[]) {
   thread_count = thread_count > 10 ? 10 : thread_count;
   std::thread threads[10];
   SumStat sum_stat;
+  PctStat pct_stat;
   for (int64_t i = 0; i < thread_count; i++) {
-    threads[i] = std::thread(handler, &sum_stat);
+    threads[i] = std::thread(handler, &sum_stat, &pct_stat);
   }
   for (int64_t i = 0; i < thread_count; i++) {
     threads[i].join();
   }
-  printStatData(sum_stat);
+  printStatData(sum_stat, pct_stat);
   return 0;
 }

@@ -1,21 +1,40 @@
 #pragma once
 #include <mutex>
 
+#include "percentile.hpp"
+
 namespace BenchMark {
 // pct指标统计
 class PctStat {
  public:
   void InterfaceSpendTimeStat(double pct50, double pct95, double pct99) {
+    std::lock_guard<std::mutex> guard(mutex_);
     interface_spend_time_stat_pct50_.push_back(pct50);
     interface_spend_time_stat_pct95_.push_back(pct95);
     interface_spend_time_stat_pct99_.push_back(pct99);
   }
+  void PrintPctAvgData() {
+    if (interface_spend_time_stat_pct50_.size() <= 0) return;
+    double pct50 =
+        std::accumulate(interface_spend_time_stat_pct50_.begin(), interface_spend_time_stat_pct50_.end(), 0.0) /
+        interface_spend_time_stat_pct50_.size();
+    double pct95 =
+        std::accumulate(interface_spend_time_stat_pct95_.begin(), interface_spend_time_stat_pct95_.end(), 0.0) /
+        interface_spend_time_stat_pct95_.size();
+    double pct99 =
+        std::accumulate(interface_spend_time_stat_pct99_.begin(), interface_spend_time_stat_pct99_.end(), 0.0) /
+        interface_spend_time_stat_pct99_.size();
+    cout << "pct avg data -> interface_pct50[" << pct50 << "us],interface_pct95[" << pct95 << "us],interface_pct99["
+         << pct99 << "us]" << endl;
+  }
 
  private:
+  std::mutex mutex_;
   std::vector<double> interface_spend_time_stat_pct50_;
   std::vector<double> interface_spend_time_stat_pct95_;
   std::vector<double> interface_spend_time_stat_pct99_;
 };
+
 // 汇总统计
 class SumStat {
  public:

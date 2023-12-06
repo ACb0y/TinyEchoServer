@@ -10,7 +10,8 @@
 #include "../codec.hpp"
 #include "../common.hpp"
 #include "../epollctl.hpp"
-#include "../percentile.hpp"
+#include "percentile.hpp"
+#include "stat.hpp"
 
 using namespace std;
 
@@ -29,12 +30,14 @@ enum ClientStatus {
 
 class EchoClient {
  public:
-  EchoClient(int epoll_fd, TinyEcho::Percentile* percentile, bool is_debug, int max_req_count, int64_t* temp_rate_limit)
+  EchoClient(int epoll_fd, Percentile* percentile, bool is_debug, int max_req_count, int64_t* temp_rate_limit,
+             PctStat* pct_stat)
       : epoll_fd_(epoll_fd),
         percentile_(percentile),
         is_debug_(is_debug),
         max_req_count_(max_req_count),
-        temp_rate_limit_(temp_rate_limit) {
+        temp_rate_limit_(temp_rate_limit),
+        pct_stat_(pct_stat) {
     if (max_req_count_ <= 0) {
       max_req_count_ = 100;
     }
@@ -270,6 +273,10 @@ class EchoClient {
     last_send_req_time_us_ = GetCurrentTimeUs();
     codec_.Reset();
     percentile_->InterfaceSpendTimeStat(spend_time_us);
+    double pct50{0}, pct95{0}, pct99{0};
+    if (percentile_->TryPrintSpendTimePctData(pct50, pct95, pct99)) {
+      pct_stat_->InterfaceSpendTimeStat(pct50, pct95, pct99);
+    }
     // 完成的请求数，已经达到最大设置的数
     if (success_count_ > max_req_count_) {
       status_ = Finish;
@@ -295,7 +302,7 @@ class EchoClient {
   int64_t last_connect_time_us_{0};  // 最近一次connect时间，单位us
   int64_t last_send_req_time_us_{0};  // 最近一次发送请求时间，单位us
   int64_t last_recv_resp_time_us_{0};  // 最近一次接受应答时间，单位us
-  TinyEcho::Percentile* percentile_;
+  Percentile* percentile_{nullptr};
   bool is_debug_;  // 是否调试模式
   int max_req_count_{0};  // 客户端最多执行多少次请求
   int64_t* temp_rate_limit_{nullptr};  // 请求限频临时变量
@@ -305,5 +312,6 @@ class EchoClient {
   int64_t write_failure_count_{0};  // 细分的失败统计，写失败数
   int64_t connect_failure_count_{0};  // 细分的失败统计，连接失败数
   int64_t try_connect_count_{0};  // 尝试连接的次数
+  PctStat* pct_stat_{nullptr};  // pct统计
 };
 }  // namespace BenchMark

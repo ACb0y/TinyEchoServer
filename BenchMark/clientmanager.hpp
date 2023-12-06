@@ -3,8 +3,8 @@
 #include <mutex>
 #include <string>
 
-#include "../percentile.hpp"
 #include "client.hpp"
+#include "percentile.hpp"
 #include "stat.hpp"
 #include "timer.hpp"
 
@@ -12,7 +12,8 @@ namespace BenchMark {
 class ClientManager {
  public:
   ClientManager(const std::string& ip, int64_t port, int epoll_fd, Timer* timer, int count, const std::string& message,
-                int64_t max_req_count, bool is_debug, bool* is_running, int64_t rate_limit, SumStat* sum_stat)
+                int64_t max_req_count, bool is_debug, bool* is_running, int64_t rate_limit, SumStat* sum_stat,
+                PctStat* pct_stat)
       : ip_(ip),
         port_(port),
         epoll_fd_(epoll_fd),
@@ -23,11 +24,12 @@ class ClientManager {
         is_debug_(is_debug),
         is_running_(is_running),
         rate_limit_(rate_limit),
-        sum_stat_(sum_stat) {
+        sum_stat_(sum_stat),
+        pct_stat_(pct_stat) {
     temp_rate_limit_ = rate_limit_;
     clients_ = new EchoClient*[count];
     for (int i = 0; i < count; i++) {
-      clients_[i] = newClient(message, is_debug, max_req_count, &temp_rate_limit_);
+      clients_[i] = newClient();
       clients_[i]->Connect(ip_, port_);
     }
   }
@@ -57,7 +59,7 @@ class ClientManager {
       getDealStat(clients_[i]);
       delete clients_[i];
       create_client_count++;
-      clients_[i] = newClient(message_, is_debug_, max_req_count_, &temp_rate_limit_);
+      clients_[i] = newClient();
       clients_[i]->Connect(ip_, port_);
     }
     if (is_debug_) {
@@ -82,10 +84,10 @@ class ClientManager {
     sum_stat_->DoStat(success_count, failure_count, read_failure_count, write_failure_count, connect_failure_count,
                       try_connect_count);
   }
-  EchoClient* newClient(const std::string& message, bool is_debug, int64_t max_req_count, int64_t* temp_rate_limit) {
+  EchoClient* newClient() {
     EchoClient* client = nullptr;
-    client = new EchoClient(epoll_fd_, &percentile_, is_debug, max_req_count, temp_rate_limit);
-    client->SetEchoMessage(message);
+    client = new EchoClient(epoll_fd_, &percentile_, is_debug_, max_req_count_, &temp_rate_limit_, pct_stat_);
+    client->SetEchoMessage(message_);
     return client;
   }
 
@@ -99,10 +101,11 @@ class ClientManager {
   std::string message_;  // 要发送的消息
   int64_t max_req_count_;  // 最大请求次数
   bool is_debug_;  // 是否调试模式
-  TinyEcho::Percentile percentile_;  // 用于统计请求耗时的pctxx数值
+  Percentile percentile_;  // 用于统计请求耗时的pctxx数值
   bool* is_running_;  // 是否运行中
   int64_t rate_limit_;  // 请求限流
   int64_t temp_rate_limit_;  // 请求限流临时变量
   SumStat* sum_stat_;  // 汇总统计
+  PctStat* pct_stat_;  // pct统计
 };
 }  // namespace BenchMark
