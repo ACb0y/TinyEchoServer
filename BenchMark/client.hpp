@@ -273,9 +273,9 @@ class EchoClient {
     last_send_req_time_us_ = GetCurrentTimeUs();
     codec_.Reset();
     percentile_->InterfaceSpendTimeStat(spend_time_us);
-    double pct50{0}, pct95{0}, pct99{0};
-    if (percentile_->TryPrintSpendTimePctData(pct50, pct95, pct99)) {
-      pct_stat_->InterfaceSpendTimeStat(pct50, pct95, pct99);
+    double pct50{0}, pct95{0}, pct99{0}, pct999{0};
+    if (percentile_->TryPrintSpendTimePctData(pct50, pct95, pct99, pct999)) {
+      pct_stat_->InterfaceSpendTimeStat(pct50, pct95, pct99, pct999);
     }
     // 完成的请求数，已经达到最大设置的数
     if (success_count_ > max_req_count_) {
