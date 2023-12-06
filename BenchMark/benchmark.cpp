@@ -11,6 +11,9 @@
 using namespace std;
 using namespace BenchMark;
 
+constexpr char kGreenBegin[] = "\033[32m";
+constexpr char kColorEnd[] = "\033[0m";
+
 string ip;
 int64_t port;
 int64_t thread_count;
@@ -101,7 +104,7 @@ void handler(SumStat *sum_stat) {
 }
 
 void printStatData(SumStat &sum_stat) {
-  cout << "--- benchmark statistics ---" << endl;
+  cout << kGreenBegin << "--- benchmark statistics ---" << kColorEnd << endl;
   TinyEcho::Percentile::PrintPctAvgData();
   sum_stat.PrintStatData(client_count, run_time);
 }
