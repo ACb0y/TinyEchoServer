@@ -19,7 +19,6 @@ void handlerClient(int client_fd) {
       return;
     }
   }
-  close(client_fd);
 }
 
 void usage() {
@@ -49,6 +48,7 @@ int main(int argc, char* argv[]) {
       continue;
     }
     handlerClient(client_fd);
+    close(client_fd);
   }
   return 0;
 }

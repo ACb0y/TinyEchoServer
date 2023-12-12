@@ -14,12 +14,13 @@ void handlerClient(int client_fd) {
   string msg;
   while (true) {
     if (not RecvMsg(client_fd, msg)) {
-      return;
+      break;
     }
     if (not SendMsg(client_fd, msg)) {
-      return;
+      break;
     }
   }
+  close(client_fd);
 }
 
 void usage() {

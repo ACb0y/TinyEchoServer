@@ -38,6 +38,7 @@ void handler(int sock_fd) {
       }
     }
     handlerClient(client_fd);  // 处理每个客户端请求
+    close(client_fd);
   }
 }
 
