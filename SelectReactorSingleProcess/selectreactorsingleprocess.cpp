@@ -86,6 +86,7 @@ int main(int argc, char *argv[]) {
           delete conn;
           conns.erase(i);
           read_fds.erase(i);
+          close(i);
           continue;
         }
         if (conn->OneMessage()) {  // 判断是否要触发写事件
@@ -100,6 +101,7 @@ int main(int argc, char *argv[]) {
           delete conn;
           conns.erase(i);
           write_fds.erase(i);
+          close(i);
           continue;
         }
         if (conn->FinishWrite()) {  // 完成了请求的应答写
