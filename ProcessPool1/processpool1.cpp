@@ -33,7 +33,7 @@ void handler(int worker_id, int sock_fd) {
     handlerClient(client_fd, count);
     close(client_fd);
     count++;
-    if (count >= 100000) {
+    if (count >= 10000) {
       cout << "worker_id[" << worker_id << "] deal_1w_request" << endl;
       count = 0;
     }
