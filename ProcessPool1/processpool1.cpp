@@ -9,7 +9,7 @@
 using namespace std;
 using namespace TinyEcho;
 
-void handlerClient(int client_fd) {
+void handlerClient(int client_fd, int64_t& count) {
   string msg;
   while (true) {
     if (not RecvMsg(client_fd, msg)) {
@@ -18,18 +18,25 @@ void handlerClient(int client_fd) {
     if (not SendMsg(client_fd, msg)) {
       return;
     }
+    count++;
   }
 }
 
-void handler(int sock_fd) {
+void handler(int worker_id, int sock_fd) {
+  int64_t count = 0;
   while (true) {
     int client_fd = accept(sock_fd, NULL, 0);
     if (client_fd < 0) {
       perror("accept failed");
       continue;
     }
-    handlerClient(client_fd);
+    handlerClient(client_fd, count);
     close(client_fd);
+    count++;
+    if (count >= 100000) {
+      cout << "worker_id[" << worker_id < "] deal_10w_request" << endl;
+      count = 0;
+    }
   }
 }
 
@@ -60,7 +67,7 @@ int main(int argc, char* argv[]) {
       continue;
     }
     if (0 == pid) {
-      handler(sock_fd);  // 子进程陷入死循环，处理客户端请求
+      handler(i, sock_fd);  // 子进程陷入死循环，处理客户端请求
       exit(0);
     }
   }
