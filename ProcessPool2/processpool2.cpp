@@ -38,7 +38,7 @@ void handler(int worker_id, string ip, int64_t port) {
     handlerClient(client_fd, count);
     close(client_fd);
     if (count >= 100000) {
-      cout << "worker_id[" << worker_id < "] deal_10w_request" << endl;
+      cout << "worker_id[" << worker_id << "] deal_1w_request" << endl;
       count = 0;
     }
   }
