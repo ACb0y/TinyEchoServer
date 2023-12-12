@@ -36,6 +36,7 @@ void handler(string ip, int64_t port) {
       continue;
     }
     handlerClient(client_fd);
+    close(client_fd);
   }
 }
 
