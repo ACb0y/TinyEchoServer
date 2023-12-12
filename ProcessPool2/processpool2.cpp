@@ -22,7 +22,7 @@ void handlerClient(int client_fd) {
 }
 
 void handler(string ip, int64_t port) {
-  // isReusePort设置为true，开启SO_REUSEPORT选项
+  // 开启SO_REUSEPORT选项
   int sock_fd = CreateListenSocket(ip, port, true);
   if (sock_fd < 0) {
     return;
