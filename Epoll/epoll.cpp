@@ -56,6 +56,7 @@ int main(int argc, char *argv[]) {
     perror("epoll_create failed");
     return -1;
   }
+  cout << "loop_accept = " << loop_accept << endl;
   Conn conn(sock_fd, epoll_fd, false);
   SetNotBlock(sock_fd);
   AddReadEvent(&conn);
