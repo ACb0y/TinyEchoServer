@@ -50,8 +50,6 @@ void usage() {
 int main(int argc, char *argv[]) {
   string ip;
   int64_t port;
-  bool is_multi_io;
-  bool is_loop_accept;
   CmdLine::StrOptRequired(&ip, "ip");
   CmdLine::Int64OptRequired(&port, "port");
   CmdLine::SetUsage(usage);
@@ -77,7 +75,7 @@ int main(int argc, char *argv[]) {
     for (int i = 0; i <= max_fd; i++) {
       if (FD_ISSET(i, &read_set)) {
         if (i == sock_fd) {  // 监听的sock_fd可读，则表示有新的链接
-          LoopAccept(sock_fd, 1024, [&read_fds](int client_fd) {
+          LoopAccept(sock_fd, 1024, [&read_fds, &conns](int client_fd) {
             read_fds.insert(client_fd);  // 新增到要监听的fd集合中
             conns[client_fd] = new Conn(client_fd, true);
           });
@@ -88,6 +86,7 @@ int main(int argc, char *argv[]) {
         if (not conn->Read()) {  // 执行读失败
           delete conn;
           conns.erase(i);
+          read_fds.erase(i);
           continue;
         }
         if (conn->OneMessage()) {  // 判断是否要触发写事件
@@ -101,9 +100,10 @@ int main(int argc, char *argv[]) {
         if (not conn->Write()) {  // 执行写失败
           delete conn;
           conns.erase(i);
+          write_fds.erase(i);
           continue;
         }
-        if (conn->FinishWrite()) {  // 完成了请求的应答写，则可以释放连接
+        if (conn->FinishWrite()) {  // 完成了请求的应答写
           conn->Reset();
           write_fds.erase(i);
           read_fds.insert(i);
