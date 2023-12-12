@@ -21,4 +21,5 @@ TEST_CASE(Codec_EnCodeAndDeCode) {
   std::string* temp = codec.GetMessage();
   ASSERT_TRUE(temp != nullptr);
   ASSERT_EQ((*temp), message);
+  delete temp;
 }
