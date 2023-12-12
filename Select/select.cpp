@@ -14,7 +14,7 @@
 using namespace std;
 using namespace TinyEcho;
 
-void updateReadSet(std::unordered_set<int> &client_fds, int &max_fd, int sock_fd, fd_set &read_set) {
+void updateReadSet(unordered_set<int> &client_fds, int &max_fd, int sock_fd, fd_set &read_set) {
   max_fd = sock_fd;
   FD_ZERO(&read_set);
   FD_SET(sock_fd, &read_set);
@@ -61,7 +61,7 @@ int main(int argc, char *argv[]) {
   int max_fd;
   fd_set read_set;
   SetNotBlock(sock_fd);
-  std::unordered_set<int> client_fds;
+  unordered_set<int> client_fds;
   while (true) {
     updateReadSet(client_fds, max_fd, sock_fd, read_set);
     int ret = select(max_fd + 1, &read_set, NULL, NULL, NULL);

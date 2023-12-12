@@ -6,6 +6,7 @@ namespace TinyEcho {
 class Conn {
  public:
   Conn(int fd, int epoll_fd, bool is_multi_io) : fd_(fd), epoll_fd_(epoll_fd), is_multi_io_(is_multi_io) {}
+  Conn(int fd, bool is_multi_io) : fd_(fd), epoll_fd_(0), is_multi_io_(is_multi_io) {}
   bool Read() {
     do {
       if (codec_.GetDecodeStatus() == FINISH) return true;
