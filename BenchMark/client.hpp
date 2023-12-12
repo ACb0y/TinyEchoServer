@@ -278,7 +278,7 @@ class EchoClient {
       pct_stat_->InterfaceSpendTimeStat(pct50, pct95, pct99, pct999);
     }
     // 完成的请求数，已经达到最大设置的数
-    if (success_count_ > max_req_count_) {
+    if (success_count_ >= max_req_count_) {
       status_ = Finish;
       ClearEvent(epoll_fd_, fd_);
     }
