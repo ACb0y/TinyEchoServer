@@ -91,22 +91,22 @@ class EchoClient {
       return false;
     }
     bool is_valid = true;
-    // connect超时，超时时间20ms
+    // connect超时，超时时间50ms
     if (Connecting == status_) {
-      if ((GetCurrentTimeUs() - last_connect_time_us_) / 1000 >= 20) {
+      if ((GetCurrentTimeUs() - last_connect_time_us_) / 1000 >= 50) {
         is_valid = false;
         failure_count_++;
         connect_failure_count_++;
       }
     }
-    // 写超时，超时时间100ms
-    if (SendRequest == status_ && (GetCurrentTimeUs() - last_send_req_time_us_) / 1000 >= 100) {
+    // 写超时，超时时间1000ms
+    if (SendRequest == status_ && (GetCurrentTimeUs() - last_send_req_time_us_) / 1000 >= 1000) {
       is_valid = false;
       failure_count_++;
       write_failure_count_++;
     }
-    // 读超时，超时时间100ms
-    if (RecvResponse == status_ && (GetCurrentTimeUs() - last_recv_resp_time_us_) / 1000 >= 100) {
+    // 读超时，超时时间1000ms
+    if (RecvResponse == status_ && (GetCurrentTimeUs() - last_recv_resp_time_us_) / 1000 >= 1000) {
       is_valid = false;
       failure_count_++;
       read_failure_count_++;
