@@ -72,7 +72,7 @@ int main(int argc, char *argv[]) {
       if (fds[i].revents & POLLIN) {
         int fd = fds[i].fd;
         if (fd == sock_fd) {
-          LoopAccept(sock_fd, 1024, [&read_fds, &conns](int client_fd) {
+          LoopAccept(sock_fd, 2048, [&read_fds, &conns](int client_fd) {
             read_fds.insert(client_fd);  // 新增到要监听的fd集合中
             conns[client_fd] = new Conn(client_fd, true);
           });
