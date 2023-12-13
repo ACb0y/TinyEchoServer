@@ -102,7 +102,7 @@ int main(int argc, char *argv[]) {
       if (not FD_ISSET(fd, &write_set)) {
         continue;
       }
-      // 可写
+      // 执行到这里，表明可写
       Conn *conn = conns[fd];
       if (not conn->Write()) {  // 执行写失败
         delete conn;
