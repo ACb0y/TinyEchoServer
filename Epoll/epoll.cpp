@@ -40,10 +40,10 @@ void usage() {
 int main(int argc, char *argv[]) {
   string ip;
   int64_t port;
-  bool loop_accept;
+  bool is_loop_accept;
   CmdLine::StrOptRequired(&ip, "ip");
   CmdLine::Int64OptRequired(&port, "port");
-  CmdLine::BoolOpt(&loop_accept, "la");
+  CmdLine::BoolOpt(&is_loop_accept, "la");
   CmdLine::SetUsage(usage);
   CmdLine::Parse(argc, argv);
   int sock_fd = CreateListenSocket(ip, port, false);
@@ -56,7 +56,7 @@ int main(int argc, char *argv[]) {
     perror("epoll_create failed");
     return -1;
   }
-  cout << "loop_accept = " << loop_accept << endl;
+  cout << "loop_accept = " << is_loop_accept << endl;
   Conn conn(sock_fd, epoll_fd, false);
   SetNotBlock(sock_fd);
   AddReadEvent(&conn);
@@ -69,20 +69,11 @@ int main(int argc, char *argv[]) {
     for (int i = 0; i < num; i++) {
       Conn *conn = (Conn *)events[i].data.ptr;
       if (conn->Fd() == sock_fd) {
-        if (loop_accept) {
-          LoopAccept(sock_fd, 2048, [epoll_fd](int client_fd) {
-            Conn *conn = new Conn(client_fd, epoll_fd, false);
-            AddReadEvent(conn);  // 监听可读事件，保持fd为阻塞IO
-          });
-        } else {
-          int client_fd = accept(sock_fd, NULL, 0);
-          if (client_fd > 0) {
-            Conn *conn = new Conn(client_fd, epoll_fd, false);
-            AddReadEvent(conn);  // 监听可读事件，保持fd为阻塞IO
-            continue;
-          }
-          perror("accept failed");
-        }
+        int max_conn = is_loop_accept ? 2048 : 1;
+        LoopAccept(sock_fd, max_conn, [epoll_fd](int client_fd) {
+          Conn *conn = new Conn(client_fd, epoll_fd, false);
+          AddReadEvent(conn);  // 监听可读事件，保持fd为阻塞IO
+        });
         continue;
       }
       handlerClient(conn->Fd());
