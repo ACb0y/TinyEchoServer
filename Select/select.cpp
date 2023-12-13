@@ -71,6 +71,10 @@ int main(int argc, char *argv[]) {
       }
       if (i == sock_fd) {  // 监听的sock_fd可读，则表示有新的链接
         LoopAccept(sock_fd, 1024, [&read_fds](int client_fd) {
+          if (client_fd >= FD_SETSIZE) {  // 大于FD_SETSIZE的值，则不支持
+            close(client_fd);
+            return;
+          }
           read_fds.insert(client_fd);  // 新增到要监听的fd集合中
         });
         continue;
