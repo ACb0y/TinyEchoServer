@@ -68,51 +68,53 @@ int main(int argc, char *argv[]) {
     }
     unordered_set<int> temp = read_fds;
     for (const auto &fd : temp) {
-      if (FD_ISSET(fd, &read_set)) {
-        if (fd == sock_fd) {  // 监听的sock_fd可读，则表示有新的链接
-          LoopAccept(sock_fd, 1024, [&read_fds, &conns](int client_fd) {
-            if (client_fd >= FD_SETSIZE) {  // 大于FD_SETSIZE的值，则不支持
-              close(client_fd);
-              return;
-            }
-            read_fds.insert(client_fd);  // 新增到要监听的fd集合中
-            conns[client_fd] = new Conn(client_fd, true);
-          });
-          continue;
-        }
-        // 执行到这里，表明可读
-        Conn *conn = conns[fd];
-        if (not conn->Read()) {  // 执行读失败
-          delete conn;
-          conns.erase(fd);
-          read_fds.erase(fd);
-          close(fd);
-          continue;
-        }
-        if (conn->OneMessage()) {  // 判断是否要触发写事件
-          conn->EnCode();
-          read_fds.erase(fd);
-          write_fds.insert(fd);
-        }
+      if (not FD_ISSET(fd, &read_set)) {
+        continue;
+      }
+      if (fd == sock_fd) {  // 监听的sock_fd可读，则表示有新的链接
+        LoopAccept(sock_fd, 1024, [&read_fds, &conns](int client_fd) {
+          if (client_fd >= FD_SETSIZE) {  // 大于FD_SETSIZE的值，则不支持
+            close(client_fd);
+            return;
+          }
+          read_fds.insert(client_fd);  // 新增到要监听的fd集合中
+          conns[client_fd] = new Conn(client_fd, true);
+        });
+        continue;
+      }
+      // 执行到这里，表明可读
+      Conn *conn = conns[fd];
+      if (not conn->Read()) {  // 执行读失败
+        delete conn;
+        conns.erase(fd);
+        read_fds.erase(fd);
+        close(fd);
+        continue;
+      }
+      if (conn->OneMessage()) {  // 判断是否要触发写事件
+        conn->EnCode();
+        read_fds.erase(fd);
+        write_fds.insert(fd);
       }
     }
     temp = write_fds;
     for (const auto &fd : temp) {
-      if (FD_ISSET(fd, &write_set)) {
-        // 可写
-        Conn *conn = conns[fd];
-        if (not conn->Write()) {  // 执行写失败
-          delete conn;
-          conns.erase(fd);
-          write_fds.erase(fd);
-          close(fd);
-          continue;
-        }
-        if (conn->FinishWrite()) {  // 完成了请求的应答写
-          conn->Reset();
-          write_fds.erase(fd);
-          read_fds.insert(fd);
-        }
+      if (not FD_ISSET(fd, &write_set)) {
+        continue;
+      }
+      // 可写
+      Conn *conn = conns[fd];
+      if (not conn->Write()) {  // 执行写失败
+        delete conn;
+        conns.erase(fd);
+        write_fds.erase(fd);
+        close(fd);
+        continue;
+      }
+      if (conn->FinishWrite()) {  // 完成了请求的应答写
+        conn->Reset();
+        write_fds.erase(fd);
+        read_fds.insert(fd);
       }
     }
   }
