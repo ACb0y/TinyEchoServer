@@ -1,8 +1,4 @@
-#include <arpa/inet.h>
-#include <netinet/in.h>
 #include <stdio.h>
-#include <stdlib.h>
-#include <sys/socket.h>
 #include <unistd.h>
 
 #include <iostream>
@@ -14,15 +10,14 @@
 using namespace std;
 using namespace TinyEcho;
 
-void updateReadSet(unordered_set<int> &client_fds, int &max_fd, int sock_fd, fd_set &read_set) {
+void updateReadSet(unordered_set<int> &read_fds, int &max_fd, int sock_fd, fd_set &read_set) {
   max_fd = sock_fd;
   FD_ZERO(&read_set);
-  FD_SET(sock_fd, &read_set);
-  for (const auto &client_fd : client_fds) {
-    if (client_fd > max_fd) {
-      max_fd = client_fd;
+  for (const auto &read_fd : read_fds) {
+    if (read_fd > max_fd) {
+      max_fd = read_fd;
     }
-    FD_SET(client_fd, &read_set);
+    FD_SET(read_fd, &read_set);
   }
 }
 
@@ -61,9 +56,10 @@ int main(int argc, char *argv[]) {
   int max_fd;
   fd_set read_set;
   SetNotBlock(sock_fd);
-  unordered_set<int> client_fds;
+  unordered_set<int> read_fds;
   while (true) {
-    updateReadSet(client_fds, max_fd, sock_fd, read_set);
+    read_fds.insert(sock_fd);
+    updateReadSet(read_fds, max_fd, sock_fd, read_set);
     int ret = select(max_fd + 1, &read_set, NULL, NULL, NULL);
     if (ret <= 0) {
       if (ret < 0) perror("select failed");
@@ -74,13 +70,13 @@ int main(int argc, char *argv[]) {
         continue;
       }
       if (i == sock_fd) {  // 监听的sock_fd可读，则表示有新的链接
-        LoopAccept(sock_fd, 1024, [&client_fds](int client_fd) {
-          client_fds.insert(client_fd);  // 新增到要监听的fd集合中
+        LoopAccept(sock_fd, 1024, [&read_fds](int client_fd) {
+          read_fds.insert(client_fd);  // 新增到要监听的fd集合中
         });
         continue;
       }
       handlerClient(i);
-      client_fds.erase(i);
+      read_fds.erase(i);
       close(i);
     }
   }

@@ -73,6 +73,7 @@ class Codec {
     decode_status_ = BODY;
     pkt_.UpdateParseLen(TINY_ECHO_HEAD_LEN);
     pkt_.ReAlloc(TINY_ECHO_HEAD_LEN + body_len_);
+    *data = (uint8_t *)pkt_.Data4Parse();  // 这里要注意，调用ReAlloc之后，缓冲区会变化，所以这里data要重新赋值
     return true;
   }
   bool decodeBody(uint8_t **data, uint32_t &need_parse_len, bool &decode_break) {
@@ -81,7 +82,7 @@ class Codec {
       return true;
     }
     if (msg_ == nullptr) {
-      msg_ = new std::string((const char *)*data, body_len_);
+      msg_ = new std::string(reinterpret_cast<const char *>(*data), body_len_);
     }
     need_parse_len -= body_len_;
     (*data) += body_len_;
