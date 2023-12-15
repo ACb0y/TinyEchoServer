@@ -137,7 +137,7 @@ int handler(string ip, int64_t port) {
 }
 
 void usage() {
-  cout << "EpollReactorProcessPoolCoroutine -ip 0.0.0.0 -port 1688 -poolsize 8" < endl;
+  cout << "EpollReactorProcessPoolCoroutine -ip 0.0.0.0 -port 1688 -poolsize 8" << endl;
   cout << "options:" << endl;
   cout << "    -h,--help      print usage" << endl;
   cout << "    -ip,--ip       listen ip" << endl;
@@ -158,10 +158,7 @@ int main(int argc, char *argv[]) {
   pool_size = pool_size > GetNProcs() ? GetNProcs() : pool_size;
   for (int i = 0; i < pool_size; i++) {
     pid_t pid = fork();
-    if (pid < 0) {
-      perror("fork failed");
-      continue;
-    }
+    assert(pid != -1);
     if (0 == pid) {
       handler(ip, port);  // 子进程陷入死循环，处理客户端请求
       exit(0);

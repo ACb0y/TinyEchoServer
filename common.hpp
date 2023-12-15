@@ -3,6 +3,7 @@
 #include <assert.h>
 #include <fcntl.h>
 #include <sys/sysinfo.h>
+#include <sys/un.h>
 
 #include <functional>
 #include <iostream>
@@ -67,6 +68,28 @@ inline void SetTimeOut(int fd, int64_t sec, int64_t usec) {
   tv.tv_usec = usec;  //微秒，1秒等于10的6次方微秒
   assert(setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) != -1);
   assert(setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv)) != -1);
+}
+
+inline int CreateListenUnixSocket(std::string path) {
+  struct sockaddr_un addr;
+  memset(&addr, 0, sizeof(addr));
+  addr.sun_family = AF_UNIX;
+  strncpy(addr.sun_path, path.c_str(), sizeof(addr.sun_path) - 1);
+
+  int sock_fd = socket(AF_UNIX, SOCK_STREAM, 0);
+  if (sock_fd < 0) {
+    perror("socket failed");
+    return -1;
+  }
+  if (bind(sock_fd, (sockaddr *)&addr, sizeof(addr)) != 0) {
+    perror("bind failed");
+    return -1;
+  }
+  if (listen(sock_fd, 10240) != 0) {
+    perror("listen failed");
+    return -1;
+  }
+  return sock_fd;
 }
 
 inline int CreateListenSocket(std::string ip, int port, bool reuse_port) {
