@@ -21,22 +21,11 @@ using namespace std;
 using namespace TinyEcho;
 
 int *EpollFd;
-int EpollInitCnt = 0;
-std::mutex Mutex;
-std::condition_variable Cond;
 
-void waitSubReactor(int sub_reactor_count) {
-  std::unique_lock<std::mutex> locker(Mutex);
-  Cond.wait(locker, [sub_reactor_count]() -> bool { return EpollInitCnt >= sub_reactor_count; });
-  return;
-}
-
-void subReactorNotifyReady() {
-  {
-    std::unique_lock<std::mutex> locker(Mutex);
-    EpollInitCnt++;
-  }
-  Cond.notify_all();
+int createEpoll() {
+  int epoll_fd = epoll_create(1);
+  assert(epoll_fd > 0);
+  return epoll_fd;
 }
 
 void addToSubReactor(int &index, int sub_reactor_count, int client_fd) {
@@ -48,7 +37,6 @@ void addToSubReactor(int &index, int sub_reactor_count, int client_fd) {
 }
 
 void mainReactor(string ip, int64_t port, int64_t sub_reactor_count, bool is_main_read) {
-  waitSubReactor(sub_reactor_count);  // 等待所有的subReactor线程都启动完毕
   int sock_fd = CreateListenSocket(ip, port, true);
   if (sock_fd < 0) {
     return;
@@ -93,13 +81,7 @@ void mainReactor(string ip, int64_t port, int64_t sub_reactor_count, bool is_mai
 
 void subReactor(int thread_id) {
   epoll_event events[2048];
-  int epoll_fd = epoll_create(1);
-  if (epoll_fd < 0) {
-    perror("epoll_create failed");
-    return;
-  }
-  EpollFd[thread_id] = epoll_fd;
-  subReactorNotifyReady();
+  int epoll_fd = EpollFd[thread_id];
   while (true) {
     int num = epoll_wait(epoll_fd, events, 2048, -1);
     if (num < 0) {
@@ -166,6 +148,7 @@ int main(int argc, char *argv[]) {
   sub_reactor_count = sub_reactor_count > GetNProcs() ? GetNProcs() : sub_reactor_count;
   EpollFd = new int[sub_reactor_count];
   for (int i = 0; i < sub_reactor_count; i++) {
+    EpollFd[i] = createEpoll();
     std::thread(subReactor, i).detach();  // 这里需要调用detach，让创建的线程独立运行
   }
   for (int i = 0; i < main_reactor_count; i++) {
