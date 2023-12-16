@@ -58,14 +58,17 @@ class Conn {
     send_len_ = 0;
     pkt_.Reset();
   }
+  bool IsUnixSocket() { return is_unix_socket_; }
+  void SetUnixSocket() { is_unix_socket_ = true; }
 
  private:
-  int fd_{0};  // 关联的客户端连接fd
+  int fd_{0};  // 关联的fd
   int epoll_fd_{0};  // 关联的epoll实例的fd
   bool is_multi_io_;  // 是否做多次io，直到返回EAGAIN或者EWOULDBLOCK
   size_t send_len_{0};  // 要发送的应答数据的长度
   std::string message_;  // 对于EchoServer来说，即是获取的请求消息，也是要发送的应答消息
   Packet pkt_;  // 发送应答消息的二进制数据包
   Codec codec_;  // EchoServer协议的编解码
+  bool is_unix_socket_{false};
 };
 }  // namespace TinyEcho

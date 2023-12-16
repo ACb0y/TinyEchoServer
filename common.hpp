@@ -70,6 +70,71 @@ inline void SetTimeOut(int fd, int64_t sec, int64_t usec) {
   assert(setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv)) != -1);
 }
 
+int SendFd(int sock_fd, int fd) {
+  // 发送文件描述符
+  struct msghdr msg = {0};
+  struct iovec iov[1];
+  char buf[1];
+  iov[0].iov_base = buf;
+  iov[0].iov_len = 1;
+  msg.msg_iov = iov;
+  msg.msg_iovlen = 1;
+  char control[CMSG_SPACE(sizeof(int))];
+  msg.msg_control = control;
+  msg.msg_controllen = sizeof(control);
+  struct cmsghdr *cmsg = CMSG_FIRSTHDR(&msg);
+  cmsg->cmsg_level = SOL_SOCKET;
+  cmsg->cmsg_type = SCM_RIGHTS;
+  cmsg->cmsg_len = CMSG_LEN(sizeof(int));
+  *((int *)CMSG_DATA(cmsg)) = fd;
+  int ret = sendmsg(sock_fd, &msg, 0);
+  if (ret == -1) {
+    perror("sendmsg");
+  }
+  return ret;
+}
+
+int RecvFd(int sock_fd, int &fd) {
+  // 接收文件描述符
+  struct msghdr msg = {0};
+  struct iovec iov[1];
+  char buf[1];
+  iov[0].iov_base = buf;
+  iov[0].iov_len = 1;
+  msg.msg_iov = iov;
+  msg.msg_iovlen = 1;
+  char control[CMSG_SPACE(sizeof(int))];
+  msg.msg_control = control;
+  msg.msg_controllen = sizeof(control);
+  int ret = recvmsg(sock_fd, &msg, 0);
+  if (ret == -1) {
+    perror("recvmsg");
+    return ret;
+  }
+  // 提取文件描述符
+  struct cmsghdr *cmsg = CMSG_FIRSTHDR(&msg);
+  memcpy(&fd, CMSG_DATA(cmsg), sizeof(int));
+  return 0;
+}
+
+inline int CreateClientUnixSocket(std::string path) {
+  struct sockaddr_un addr;
+  memset(&addr, 0, sizeof(addr));
+  addr.sun_family = AF_UNIX;
+  strncpy(addr.sun_path, path.c_str(), sizeof(addr.sun_path) - 1);
+  int sock_fd = socket(AF_UNIX, SOCK_STREAM, 0);
+  if (sock_fd == -1) {
+    perror("socket failed");
+    return -1;
+  }
+  if (connect(sock_fd, (struct sockaddr *)&addr, sizeof(addr)) == -1) {
+    close(sock_fd);
+    perror("connect");
+    return -1;
+  }
+  return sock_fd;
+}
+
 inline int CreateListenUnixSocket(std::string path) {
   struct sockaddr_un addr;
   memset(&addr, 0, sizeof(addr));
