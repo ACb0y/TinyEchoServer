@@ -211,7 +211,7 @@ int main(int argc, char *argv[]) {
   // 不再需要这些fd，需要及时关闭，避免fd泄漏
   for_each(server_unix_sockets.begin(), server_unix_sockets.end(),
            [](int server_unix_socket_fd) { close(server_unix_socket_fd); });
-  createMainReactor(ip, port, is_main_read, sub_reactor_count, main_reactor_count);  // 创建MainRector线程
+  createMainReactor(ip, port, is_main_read, sub_reactor_count, main_reactor_count);  // 创建MainRector进程
   while (true) sleep(1);  // 主进程陷入死循环
   return 0;
 }
