@@ -17,13 +17,14 @@ using namespace std;
 using namespace TinyEcho;
 
 void usage() {
-  cout << "EpollReactorSingleProcess -ip 0.0.0.0 -port 1688 -multiio -la" << endl;
+  cout << "EpollReactorSingleProcess -ip 0.0.0.0 -port 1688 -multiio -la -writefirst" << endl;
   cout << "options:" << endl;
   cout << "    -h,--help      print usage" << endl;
   cout << "    -ip,--ip       listen ip" << endl;
   cout << "    -port,--port   listen port" << endl;
   cout << "    -multiio,--multiio  multi io" << endl;
   cout << "    -la,--la       loop accept" << endl;
+  cout << "    -writefirst--writefirst write first" << endl;
   cout << endl;
 }
 
@@ -32,13 +33,17 @@ int main(int argc, char *argv[]) {
   int64_t port;
   bool is_multi_io;
   bool is_loop_accept;
+  bool is_write_first;
   CmdLine::StrOptRequired(&ip, "ip");
   CmdLine::Int64OptRequired(&port, "port");
   CmdLine::BoolOpt(&is_multi_io, "multiio");
   CmdLine::BoolOpt(&is_loop_accept, "la");
+  CmdLine::BoolOpt(&is_write_first, "writefirst");
   CmdLine::SetUsage(usage);
   CmdLine::Parse(argc, argv);
   cout << "is_loop_accept = " << is_loop_accept << endl;
+  cout << "is_multi_io = " << is_multi_io << endl;
+  cout << "is_write_first = " << is_write_first << endl;
   int sock_fd = CreateListenSocket(ip, port, false);
   if (sock_fd < 0) {
     return -1;
@@ -80,6 +85,12 @@ int main(int argc, char *argv[]) {
         }
         if (conn->OneMessage()) {  // 判断是否要触发写事件
           conn->EnCode();
+          if (is_write_first) {  // 判断是否要先写数据
+            if (not conn->Write()) {
+              releaseConn();
+              continue;
+            }
+          }
           ModToWriteEvent(conn);  // 修改成只监控可写事件
         }
       }
