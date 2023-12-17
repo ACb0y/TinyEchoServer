@@ -39,7 +39,7 @@ void handlerClient(void *arg) {
     string *req_message{nullptr};
     string resp_message;
     while (true) {  // 读操作
-      ret = read(event_data->fd_, codec.Data(), codec.Len());  // 一次最多读取100字节
+      ret = read(event_data->fd_, codec.Data(), codec.Len());
       if (ret == 0) {
         perror("peer close connection");
         releaseConn();
