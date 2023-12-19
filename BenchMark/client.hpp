@@ -91,9 +91,9 @@ class EchoClient {
       return false;
     }
     bool is_valid = true;
-    // connect超时，超时时间50ms
+    // connect超时，超时时间100ms
     if (Connecting == status_) {
-      if ((GetCurrentTimeUs() - last_connect_time_us_) / 1000 >= 50) {
+      if ((GetCurrentTimeUs() - last_connect_time_us_) / 1000 >= 100) {
         is_valid = false;
         failure_count_++;
         connect_failure_count_++;
