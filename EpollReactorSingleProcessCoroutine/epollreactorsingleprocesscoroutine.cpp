@@ -115,6 +115,7 @@ int main(int argc, char *argv[]) {
     perror("epoll_create failed");
     return -1;
   }
+  cout << "is_dynamic_time_out = " << is_dynamic_time_out << endl;
   EventData event_data(sock_fd, epoll_fd);
   SetNotBlock(sock_fd);
   AddReadEvent(epoll_fd, sock_fd, &event_data);

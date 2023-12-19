@@ -91,7 +91,12 @@ int main(int argc, char *argv[]) {
               continue;
             }
           }
-          ModToWriteEvent(conn);  // 修改成只监控可写事件
+          if (conn->FinishWrite()) {
+            conn->Reset();
+            ModToReadEvent(conn);  // 修改成只监控可读事件
+          } else {
+            ModToWriteEvent(conn);  // 修改成只监控可写事件
+          }
         }
       }
       if (events[i].events & EPOLLOUT) {  // 可写
