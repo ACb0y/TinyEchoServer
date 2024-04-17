@@ -3,8 +3,7 @@
 
 using namespace MyCoroutine;
 
-void print(void* arg) {
-  Schedule* schedule = (Schedule*)arg;
+void print(Schedule* schedule) {
   std::cout << "print begin" << std::endl;
   CoroutineYield(*schedule);
   std::cout << "print end" << std::endl;

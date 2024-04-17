@@ -27,8 +27,7 @@ struct EventData {
 
 void EchoDeal(const std::string req_message, std::string &resp_message) { resp_message = req_message; }
 
-void handlerClient(void *arg) {
-  EventData *event_data = (EventData *)arg;
+void handlerClient(EventData *event_data) {
   auto releaseConn = [&event_data]() {
     ClearEvent(event_data->epoll_fd_, event_data->fd_);
     delete event_data;  // 释放内存
@@ -126,7 +125,7 @@ int handler(string ip, int64_t port) {
       }
       if (event_data->cid_ == MyCoroutine::kInvalidRoutineId) {  // 第一次事件，则创建协程
         event_data->schedule_ = &schedule;
-        event_data->cid_ = MyCoroutine::CoroutineCreate(schedule, handlerClient, event_data, 0);  // 创建协程
+        event_data->cid_ = MyCoroutine::CoroutineCreate(schedule, handlerClient, event_data);  // 创建协程
         MyCoroutine::CoroutineResumeById(schedule, event_data->cid_);
       } else {
         MyCoroutine::CoroutineResumeById(schedule, event_data->cid_);  // 唤醒之前主动让出cpu的协程

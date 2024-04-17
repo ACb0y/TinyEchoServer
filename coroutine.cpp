@@ -12,18 +12,17 @@ static void CoroutineRun(Schedule* schedule) {
   assert(id >= 0 && id < schedule->coroutineCnt);
   Coroutine* routine = schedule->coroutines[id];
   // 执行entry函数
-  routine->entry(routine->arg);
+  routine->entry();
   // entry函数执行完之后，才能把协程状态更新为idle，并标记runningCoroutineId为无效的id
   routine->state = Idle;
   schedule->runningCoroutineId = kInvalidRoutineId;
   // 这个函数执行完，调用栈会回到主协程中，执行routine->ctx.uc_link指向的上下文的下一条指令
 }
 
-static void CoroutineInit(Schedule& schedule, Coroutine* routine, Entry entry, void* arg, uint32_t priority) {
-  routine->arg = arg;
+void CoroutineInit(Schedule& schedule, Coroutine* routine, std::function<void()> entry) {
   routine->entry = entry;
   routine->state = Ready;
-  routine->priority = priority;
+  routine->priority = 0;
   routine->stack = new uint8_t[schedule.stackSize];
 
   getcontext(&(routine->ctx));
@@ -36,19 +35,6 @@ static void CoroutineInit(Schedule& schedule, Coroutine* routine, Entry entry, v
   // 是为了在CoroutineRun中entry函数执行完之后，从协程的状态更新Idle，并更新当前处于运行中的从协程id为无效id，
   // 这样这些逻辑就可以对上层调用透明。
   makecontext(&(routine->ctx), (void (*)(void))(CoroutineRun), 1, &schedule);
-}
-
-int CoroutineCreate(Schedule& schedule, Entry entry, void* arg, uint32_t priority) {
-  int id = 0;
-  for (id = 0; id < schedule.coroutineCnt; id++) {
-    if (schedule.coroutines[id]->state == Idle) break;
-  }
-  if (id >= schedule.coroutineCnt) {
-    return kInvalidRoutineId;
-  }
-  Coroutine* routine = schedule.coroutines[id];
-  CoroutineInit(schedule, routine, entry, arg, priority);
-  return id;
 }
 
 void CoroutineYield(Schedule& schedule) {

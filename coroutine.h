@@ -5,6 +5,7 @@
 #include <ucontext.h>
 
 #include <cstdint>
+#include <functional>
 
 namespace MyCoroutine {
 
@@ -30,15 +31,11 @@ enum ResumeResult {
   Success = 2,  // 成功唤醒一个挂起状态的协程
 };
 
-// 入口函数
-typedef void (*Entry)(void* arg);
-
 // 协程结构体
 typedef struct Coroutine {
   State state;  // 协程当前的状态
   uint32_t priority;  // 协程优先级，值越小，优先级越高
-  void* arg;  // 协程入口函数的参数
-  Entry entry;  // 协程入口函数
+  std::function<void()> entry;  // 协程入口函数
   ucontext_t ctx;  // 协程执行上下文
   uint8_t* stack;  // 每个协程独占的协程栈，动态分配
 } Coroutine;
@@ -53,8 +50,23 @@ typedef struct Schedule {
   int stackSize;  // 协程栈的大小，单位字节
 } Schedule;
 
+// 协程初始化
+void CoroutineInit(Schedule& schedule, Coroutine* routine, std::function<void()> entry);
 // 创建协程
-int CoroutineCreate(Schedule& schedule, Entry entry, void* arg, uint32_t priority = 0);
+template <typename Function, typename... Args>
+int CoroutineCreate(Schedule& schedule, Function&& f, Args&&... args) {
+  int id = 0;
+  for (id = 0; id < schedule.coroutineCnt; id++) {
+    if (schedule.coroutines[id]->state == Idle) break;
+  }
+  if (id >= schedule.coroutineCnt) {
+    return kInvalidRoutineId;
+  }
+  Coroutine* routine = schedule.coroutines[id];
+  std::function<void()> entry = std::bind(std::forward<Function>(f), std::forward<Args>(args)...);
+  CoroutineInit(schedule, routine, entry);
+  return id;
+}
 // 让出执行权，只能在从协程中调用
 void CoroutineYield(Schedule& schedule);
 // 恢复从协程的调用，只能在主协程中调用
