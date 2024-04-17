@@ -9,25 +9,24 @@
 #include <unordered_set>
 
 namespace BenchMark {
-typedef void (*TimerCallBack)(void* data);
 typedef struct TimerData {
   friend bool operator<(const TimerData& left, const TimerData& right) {
     return left.abs_time_ms_ > right.abs_time_ms_;
   }
   uint64_t id_;
-  void* data_{nullptr};
   int64_t abs_time_ms_{0};
-  TimerCallBack call_back_{nullptr};
+  std::function<void()> call_back_{nullptr};
 } TimerData;
 
 class Timer {
  public:
-  uint64_t Register(TimerCallBack call_back, void* data, int64_t time_out_ms) {
+  template <typename Function, typename... Args>
+  uint64_t Register(int64_t time_out_ms, Function&& f, Args&&... args) {
     alloc_id_++;
     TimerData timer_data;
     timer_data.id_ = alloc_id_;
-    timer_data.data_ = data;
     timer_data.abs_time_ms_ = GetCurrentTimeMs() + time_out_ms;
+    std::function<void()> call_back = std::bind(std::forward<Function>(f), std::forward<Args>(args)...);
     timer_data.call_back_ = call_back;
     timers_.push(timer_data);
     timer_ids_.insert(timer_data.id_);
@@ -69,7 +68,7 @@ class Timer {
       cancel_ids_.erase(timer_id);
       return;
     }
-    timer_data.call_back_(timer_data.data_);
+    timer_data.call_back_();
   }
   int64_t GetCurrentTimeMs() {
     struct timeval current;

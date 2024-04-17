@@ -42,24 +42,21 @@ void usage() {
   cout << endl;
 }
 
-void threadExit(void *data) {
-  ClientManager *client_manager = (ClientManager *)data;
-  client_manager->GetStatData();
-  client_manager->SetExit();
+void threadExit(ClientManager &client_manager) {
+  client_manager.GetStatData();
+  client_manager.SetExit();
 }
 
-void clientManagerCheck(void *data) {
-  ClientManager *client_manager = (ClientManager *)data;
-  client_manager->CheckClientStatusAndDeal();
+void clientManagerCheck(ClientManager &client_manager) {
+  client_manager.CheckClientStatusAndDeal();
   // 重新注册定时器
-  client_manager->GetTimer()->Register(clientManagerCheck, data, 1);
+  client_manager.GetTimer()->Register(1, clientManagerCheck, std::ref(client_manager));
 }
 
-void rateLimitRefresh(void *data) {
-  ClientManager *client_manager = (ClientManager *)data;
-  client_manager->RateLimitRefresh();
+void rateLimitRefresh(ClientManager &client_manager) {
+  client_manager.RateLimitRefresh();
   // 重新注册定时器
-  client_manager->GetTimer()->Register(rateLimitRefresh, data, 1000);
+  client_manager.GetTimer()->Register(1000, rateLimitRefresh, std::ref(client_manager));
 }
 
 void handler(SumStat *sum_stat, PctStat *pct_stat) {
@@ -74,9 +71,9 @@ void handler(SumStat *sum_stat, PctStat *pct_stat) {
   std::string message(pkt_size + 1, 'a');
   ClientManager client_manager(ip, port, epoll_fd, &timer, client_count, message, max_req_count, is_debug, &is_running,
                                rate_limit, sum_stat, pct_stat);
-  timer.Register(threadExit, &client_manager, run_time * 1000);
-  timer.Register(clientManagerCheck, &client_manager, 1);
-  timer.Register(rateLimitRefresh, &client_manager, 1000);  // 每秒刷新一下限流值
+  timer.Register(run_time * 1000, threadExit, std::ref(client_manager));
+  timer.Register(1, clientManagerCheck, std::ref(client_manager));
+  timer.Register(1000, rateLimitRefresh, std::ref(client_manager));  // 每秒刷新一下限流值
   while (is_running) {
     int64_t msec = 0;
     bool oneTimer = false;
