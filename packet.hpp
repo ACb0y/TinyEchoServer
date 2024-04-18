@@ -40,7 +40,7 @@ class Packet {
  public:
   uint8_t *data_{nullptr};  // 二进制缓冲区
   size_t len_{0};  // 缓冲区的总长度
-  size_t use_len_{0};  // 缓冲区使用长度
-  size_t parse_len_{0};  // 完成解析的长度
+  size_t use_len_{0};  // 缓冲区中已经使用的长度
+  size_t parse_len_{0};  // 缓冲区中已经完成解析的长度
 };
 }  // namespace TinyEcho
