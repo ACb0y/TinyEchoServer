@@ -186,11 +186,11 @@ inline int CreateListenSocket(std::string ip, int port, bool reuse_port) {
 }
 
 // 调用本函数之前需要把sock_fd设置成非阻塞的
-inline void LoopAccept(int sock_fd, int max_conn, std::function<void(int clientFd)> client_accept_call_back) {
+inline void LoopAccept(int sock_fd, int max_conn, std::function<void(int)> accept_call_back) {
   while (max_conn--) {
     int client_fd = accept(sock_fd, NULL, 0);
     if (client_fd > 0) {
-      client_accept_call_back(client_fd);
+      accept_call_back(client_fd);
       continue;
     }
     if (errno != EAGAIN && errno != EWOULDBLOCK && errno != EINTR) {

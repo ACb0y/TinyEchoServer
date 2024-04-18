@@ -22,9 +22,9 @@ using namespace TinyEcho;
 void mainReactor(string ip, int64_t port, bool is_main_read, int64_t sub_reactor_count) {
   vector<int> client_unix_sockets;
   for (int i = 0; i < sub_reactor_count; i++) {
-    int client_unix_socket_fd = CreateClientUnixSocket("./unix.sock." + to_string(i));
-    assert(client_unix_socket_fd > 0);
-    client_unix_sockets.push_back(client_unix_socket_fd);
+    int fd = CreateClientUnixSocket("./unix.sock." + to_string(i));
+    assert(fd > 0);
+    client_unix_sockets.push_back(fd);
   }
   int index = 0;
   int sock_fd = CreateListenSocket(ip, port, true);
@@ -150,7 +150,7 @@ void createSubReactor(vector<int> &server_unix_sockets, int64_t sub_reactor_coun
   for (int i = 0; i < sub_reactor_count; i++) {
     pid_t pid = fork();
     assert(pid != -1);
-    if (pid == 0) {  // 子 进程
+    if (pid == 0) {  // 子进程
       int fd = server_unix_sockets[i];
       // 关闭不需要的fd，避免fd泄漏
       for_each(server_unix_sockets.begin(), server_unix_sockets.end(), [fd](int server_unix_socket_fd) {
@@ -206,11 +206,11 @@ int main(int argc, char *argv[]) {
   main_reactor_count = main_reactor_count > GetNProcs() ? GetNProcs() : main_reactor_count;
   sub_reactor_count = sub_reactor_count > GetNProcs() ? GetNProcs() : sub_reactor_count;
   vector<int> server_unix_sockets;
+  // TODO SubReactor进程 和 MainRector进程 可以建立一个基于unix socket的控制消息传递的功能。
   createServerUnixSocket(server_unix_sockets, sub_reactor_count);
   createSubReactor(server_unix_sockets, sub_reactor_count);  // 创建SubReactor进程
   // 不再需要这些fd，需要及时关闭，避免fd泄漏
-  for_each(server_unix_sockets.begin(), server_unix_sockets.end(),
-           [](int server_unix_socket_fd) { close(server_unix_socket_fd); });
+  for_each(server_unix_sockets.begin(), server_unix_sockets.end(), [](int fd) { close(fd); });
   createMainReactor(ip, port, is_main_read, sub_reactor_count, main_reactor_count);  // 创建MainRector进程
   while (true) sleep(1);  // 主进程陷入死循环
   return 0;
